@@ -7,6 +7,13 @@ what is on `devel` and not released yet (also in the
 
 ## Next update
 
+### Improved
+
+- **Linux: the applications menu entry is optional** (#625). Setup asks "Add a menu entry" (in the setup window
+  and in a terminal; `--desktop-entry` / `--no-desktop-entry` answer it). It is on by default for a source build
+  and off when setup runs from the AppImage, which starts the game itself. Updates and repairs keep the choice,
+  and "no" removes the `wwhd.desktop` an earlier setup wrote (only setup's own entry, never another one).
+
 ## v0.5.2
 
 ### Thanks
