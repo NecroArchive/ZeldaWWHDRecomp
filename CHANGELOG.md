@@ -7,6 +7,14 @@ what is on `devel` and not released yet (also in the
 
 ## Next update
 
+### New
+
+- **Slow walk** (#626). A new input in **Settings › Controls**, **Slow walk (hold)**, under Jump anywhere and the
+  moon jump: while it is held, the left stick (the movement keys or a controller) moves Link at a share of its
+  tilt, so a full tilt walks instead of running. The share is its **Speed**, 10–90 %, 30 % by default (also on
+  the settings page as **Controls › Slow walk speed**). Unbound by default, since Left Shift is the keyboard's ZL;
+  choose a key or controller input for it. Controls files from before keep working unchanged.
+
 ## v0.5.2
 
 ### Thanks
