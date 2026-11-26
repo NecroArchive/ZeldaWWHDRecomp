@@ -7,6 +7,14 @@ what is on `devel` and not released yet (also in the
 
 ## Next update
 
+### Fixed
+
+- **FXAA no longer blurs the HUD and text** (#587). With FXAA (Graphics › Edge smoothing) on, the game's 3D picture
+  is now smoothed before the HUD is drawn over it, so hearts, rupees, the buttons, text and menus stay sharp while
+  3D edges are smoothed as before. Pictures without a HUD (cutscenes, the title's 2D parts) are smoothed as before.
+  Metal and Vulkan, with every resolution scale, HDR, frame interpolation and 60 fps (generated). `WWHD_FXAA_HUD=1`
+  smooths the whole picture as before; with FXAA off nothing changes.
+
 ## v0.5.2
 
 ### Thanks
