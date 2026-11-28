@@ -62,6 +62,13 @@ what is on `devel` and not released yet (also in the
   apply. Outside first person, and while targeting with an item, nothing changes. Only controllers swap: the
   keyboard, mouse and gyro aim as before. *Right stick (HD)* is the default; also on the item menu's settings page
   and in the macOS Controls window (`WWHD_AIM_LEFT_STICK=1` for a run).
+- **Switch first-person aiming shortcut** (#666 follow-up, thanks to Ranpo / @mobby45 for the idea). A new app
+  shortcut in **Settings › Shortcuts** (group Controls) switches **First-person aiming** between *Right stick (HD)*
+  and *Left stick (classic)* while you play, also in the middle of an aim: the next stick read uses the new choice.
+  The choice is saved as if changed in Controls › Camera, and a short notice says which stick aims now (in the
+  game's language: English, French, German, Italian or Spanish). It is **unbound by default**: bind it to a key, a
+  controller button (L3, for example, which the game doesn't use) or a hold-and-press combination. As with the
+  other shortcuts, its button reaches neither the game nor its own game binding while it is held.
 - **Right stick up/down: Zoom or Look up and down** (#661, thanks @stonerbong42069). A new choice in
   **Settings › Controls › Camera**: *Zoom (original)* keeps Wind Waker's camera, where up brings the camera closer
   and lower and down further and higher; *Look up and down* tilts the camera up and down around Link instead and

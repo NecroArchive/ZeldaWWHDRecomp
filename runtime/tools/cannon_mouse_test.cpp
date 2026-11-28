@@ -366,6 +366,8 @@ int main(){
         aim_left=true;
         assert(swapped(read()));                  // Left stick (classic): the left stick aims, the right one walks
         ++clock_step;assert(swapped(read()));      // the camera ran in the step before this read
+        // the Switch first-person aiming shortcut mid-aim (input_map::kAimStick): the very next read follows it, both ways
+        aim_left=false;assert(as_game(read()));aim_left=true;assert(swapped(read()));
         // each view: R3 look, telescope, Picto Box, the other aims (also from the boat)
         for(uint32_t w:{uint32_t(kSt0FirstPerson),uint32_t(kSt0Telescope),uint32_t(kSt0HookshotAim),uint32_t(kSt0BoomerangAim),uint32_t(kSt0RopeAim)}){
             st32(st0,w);hook_025071FC(&c);assert(swapped(read()));

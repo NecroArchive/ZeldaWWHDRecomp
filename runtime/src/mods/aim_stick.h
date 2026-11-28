@@ -23,8 +23,10 @@
 // Pure, so aim_stick_test checks it without the game.
 #pragma once
 #include <cstdint>
+#include <string>
 #include <utility>
 
+#include "game_settings_text.h"
 #include "play_context.h"
 
 namespace mods::aim_stick {
@@ -51,6 +53,13 @@ inline bool active(bool option, bool subject_camera, bool cannon, uint32_t statu
 inline void swap(float& lx, float& ly, float& rx, float& ry) {
     std::swap(lx, rx);
     std::swap(ly, ry);
+}
+
+// the notice of the Switch first-person aiming shortcut (input_map::kAimStick), in `language` (Wii U code; the
+// words of Controls › Camera and the game's settings page, game_settings_text.h)
+inline std::string notice(bool left, uint32_t language) {
+    using game_settings_text::tr;
+    return tr("First-person aiming", language) + ": " + tr(left ? "Left stick (classic)" : "Right stick (HD)", language);
 }
 
 }  // namespace mods::aim_stick

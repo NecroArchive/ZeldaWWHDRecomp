@@ -1501,6 +1501,9 @@ static NSTextField* label(NSString* s) {
         [self syncOptions];
         dirty = true;
     }
+    // First-person aiming changed by its shortcut (input_map::kAimStick) while the window is open
+    if (const NSInteger aim = mods::aim_left_stick() ? 1 : 0; self.aimStick && self.aimStick.indexOfSelectedItem != aim)
+        [self.aimStick selectItemAtIndex:aim];
     if (!_freezeView && input::pro_controller() != _st.pro) {  // Input menu
         _st.pro = input::pro_controller();
         [self syncWhich];

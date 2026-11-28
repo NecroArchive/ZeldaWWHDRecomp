@@ -30,12 +30,14 @@
 #include <mutex>
 #include <string>
 
+#include "aim_stick.h"
 #include "camera_zoom_hold.h"
 #include "mouse_wheel.h"
 #include "guest_addr.h"
 #include "mods.h"
 #include "play_context.h"
 #include "../aspect.h"
+#include "../console_language.h"
 #include "../overlay/hostui.h"
 #include "../port_points.h"
 #include "../runtime.h"
@@ -155,6 +157,12 @@ bool aim_left_stick() { return g_aim_left.get() != 0; }
 int wheel_zoom_smoothing() { return g_wheel_smooth.get(); }
 void set_wheel_zoom_smoothing(int choice) { g_wheel_smooth.set(choice); }
 void set_aim_left_stick(bool left) { g_aim_left.set(left); }
+// input::read() picks the new choice up on its next read (camera.cpp aim_stick_filter): no stick state is kept
+std::string switch_aim_stick() {
+    const bool left = !aim_left_stick();
+    set_aim_left_stick(left);
+    return aim_stick::notice(left, console_language());
+}
 
 // camera.cpp filter_pad, once per logic step: the swing's degrees for the camera's angle (0 none).
 // `player_camera`: the player turned the camera in this read (right stick, mouse, swipe)

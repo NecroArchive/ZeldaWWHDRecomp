@@ -47,5 +47,13 @@ int main() {
     assert(lx == 0.f && ly == .5f && rx == .25f && ry == -1.f);
     as::swap(lx, ly, rx, ry);
     assert(lx == .25f && ly == -1.f && rx == 0.f && ry == .5f);
+    // the Switch first-person aiming shortcut's notice (input_map::kAimStick), in the game's language
+    assert(as::notice(true, 1) == "First-person aiming: Left stick (classic)");
+    assert(as::notice(false, 1) == "First-person aiming: Right stick (HD)");
+    assert(as::notice(false, 0) == as::notice(false, 1) && as::notice(true, 6) == as::notice(true, 1));  // others: English
+    assert(as::notice(true, 2) == "Visée subjective: Stick gauche (classique)");
+    assert(as::notice(false, 3) == "Zielen in der Ich-Perspektive: Rechter Stick (HD)");
+    assert(as::notice(true, 4) == "Mira in prima persona: Stick sinistro (classico)");
+    assert(as::notice(false, 5) == "Apuntado en primera persona: Stick derecho (HD)");
     std::puts("aim_stick_test: ok");
 }

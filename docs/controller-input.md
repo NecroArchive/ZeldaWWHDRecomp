@@ -113,6 +113,17 @@ read from the controller, before the keyboard is added, so the game itself is
 unchanged. It is saved in the settings (`aimLeftStick`); `WWHD_AIM_LEFT_STICK=1`
 (or `0`) overrides it for a run.
 
+To change it while playing, bind the **Switch first-person aiming** shortcut
+(Settings → Shortcuts, group Controls; unbound by default) to a key, a
+controller button such as L3, or a hold-and-press combination (see App shortcuts
+and extra buttons). Each press switches between the two choices, saves the
+choice as Controls → Camera does and shows a short notice, such as "First-person
+aiming: Left stick (classic)", in the game's language. It works in the middle of
+an aim too: the sticks are swapped (or not) on each controller read, so the next
+read uses the new choice and no stick value is held over. With
+`WWHD_AIM_LEFT_STICK` set, the shortcut still switches for the run, but the
+saved choice stays as it was.
+
 While conducting, the **right stick supplies the notes**, including down. The
 **left stick controls the meter**: hold left or right to change the beat count.
 The D-pad does not substitute for the note stick in the original game. For example,
@@ -443,3 +454,11 @@ Right-click a binding to clear it. Controller users can focus it and press the b
 to X; keyboard users can press Delete or Backspace. The right mouse button remains assignable
 while a field is recording. A combination takes only its two buttons, and only while both
 are held. A single-button shortcut takes that button while held.
+
+**Switch first-person aiming** (group Controls) switches First-person aiming
+between Right stick (HD) and Left stick (classic) and shows which one is on
+(see First-person aiming above). Like picture-in-picture, the performance
+overlay, mute and volume, it starts unbound. L3 suits it: the game itself does
+not use the left stick click, and while L3 is held as a shortcut it reaches
+neither the game nor a mod bound to it (for example the move-speed boost, which
+holds L3 by default: bind one of them elsewhere).

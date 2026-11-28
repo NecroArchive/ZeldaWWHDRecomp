@@ -502,7 +502,8 @@ macOS), an alternate key, and a controller combination: hold one button, then pr
 for example **Select + D-pad Up**. Click a binding to capture it; Esc cancels, right-click or
 **Clear** unbinds it. Conflicting keys (including game controls) and duplicate combinations
 are marked. **Reset to defaults** resets this tab. The GamePad picture-in-picture, performance
-overlay, mute, volume and Quit Game actions start unbound. Defaults otherwise stay unchanged.
+overlay, mute, volume, Switch first-person aiming (Controls › Camera's First-person aiming, with a
+short notice; L3 suits it) and Quit Game actions start unbound. Defaults otherwise stay unchanged.
 
 **Quit Game** opens the quit confirmation directly, without navigating through Settings. Assign a
 controller combination in **Settings → Shortcuts → General → Quit Game**, for example hold Select

@@ -755,8 +755,8 @@ and these keys do not reach the game's button mapping. The Screenshot binding (F
 Settings → Shortcuts) works in every game window the same way; `WWHD_TEST_SCREENSHOT=<frames>` scripts it. Host-input-disabled scripted
 runs do not accept the shortcuts. State files remain in the configured state directory.
 
-The Shortcuts tab also offers picture-in-picture, the performance overlay, mute and volume,
-initially unbound. Bindings are stored with the game controls in `controls.json`; older Screenshot
+The Shortcuts tab also offers picture-in-picture, the performance overlay, mute and volume and
+Switch first-person aiming, initially unbound. Bindings are stored with the game controls in `controls.json`; older Screenshot
 bindings migrate automatically. Conflicts include game keys and duplicate combinations.
 Home is the default controller button shown under **Settings**, and is remappable there.
 Esc (or F1) opens Settings. With a captured mouse, the first Esc frees the mouse and a second
