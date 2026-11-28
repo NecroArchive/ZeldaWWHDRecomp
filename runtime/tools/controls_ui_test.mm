@@ -272,6 +272,9 @@ int main() {
         [g_controls syncOptions];assert(g_controls.aimStick.indexOfSelectedItem==1);
         mods::aimLeft=false;[g_controls syncOptions];
         assert(g_controls.aimStick.indexOfSelectedItem==0);
+        // its shortcut (input_map::kAimStick) while the window is open: the next poll shows it
+        mods::aimLeft=true;[g_controls poll];assert(g_controls.aimStick.indexOfSelectedItem==1);
+        mods::aimLeft=false;[g_controls poll];assert(g_controls.aimStick.indexOfSelectedItem==0);
         menu_settings_key_test();
         std::filesystem::remove(path);
         fprintf(stderr,"controls_ui_test: passed (incl. fixed Cmd+, Settings menu key)\n");

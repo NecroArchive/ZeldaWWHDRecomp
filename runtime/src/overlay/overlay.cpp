@@ -4104,6 +4104,7 @@ void activate_shortcut(int action, KeyOrigin origin) {
         }
         case kVolumeDown: audio::set_master_volume(std::max(0.0f, audio::master_volume() - 0.05f)); break;
         case kVolumeUp: audio::set_master_volume(std::min(1.0f, audio::master_volume() + 0.05f)); break;
+        case kAimStick: ss::notice(mods::switch_aim_stick()); break;  // #666: saved; the next pad read uses it
         default: break;
         }
         hostui::graphics_changed();

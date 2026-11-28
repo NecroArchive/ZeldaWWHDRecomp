@@ -48,6 +48,11 @@ namespace hostui {
  int drc_mode(){return 0;} void set_drc_mode(int){} bool drc_shown(){return true;} void show_drc(bool){}
  void set(const char*,const std::string&){}
 }
+// the Switch first-person aiming shortcut (input_map::kAimStick): mods::switch_aim_stick flips and saves the
+// choice (steer.cpp), its notice goes to the toast (ss::notice)
+static bool aimLeft=false; static std::vector<std::string> notices;
+namespace mods { std::string switch_aim_stick(){aimLeft=!aimLeft;return aimLeft?"First-person aiming: Left stick (classic)":"First-person aiming: Right stick (HD)";} }
+namespace ss { void notice(const std::string& text){notices.push_back(text);} }
 static int shots = 0;
 namespace screenshot { void request(){++shots;} bool key_down(int){return false;} void poll_controller(const float*){} }
 
@@ -263,6 +268,30 @@ static int shortcut_ui_test() {
  frame(); focus(ImHashStr("Reset to defaults",0,ImHashStr("Shortcut UI regression"))); clickFocused(ImGuiMouseSource_Mouse);
  assert(current().shortcuts==shortcut_defaults() && current().keys[kA]==m.keys[kA]);
  Mapping disk; assert(load_file(file.string(),disk)); assert(disk==current());
+ // Switch first-person aiming (#666): unbound by default; bound to L3 through the real capture, it persists, a
+ // press switches once (with its notice), a held L3 does not repeat, and the game does not get L3 meanwhile
+ assert(current().shortcuts[kAimStick]==ShortcutBinding{});
+ g_open=false; pressPad(kPadL3); assert(!aimLeft && notices.empty()); g_open=true; frame();
+ focus(bindingId(kAimStick,2)); pressPad(face_input(kA)); assert(U.cap_action==kActionCount+kAimStick);
+ pressPad(kPadL3);
+ assert(current().shortcuts[kAimStick].button==kPadL3 && !current().shortcuts[kAimStick].hold && !shortcut_conflict(current(),kAimStick));
+ assert(!aimLeft && notices.empty());  // the capture's own press does not switch
+ saved=current(); set_current(Mapping::defaults(),false); load_startup(); assert(current()==saved);
+ g_open=false;
+ {
+  float game[kPadCount]={};
+  U.values[kPadL3]=1; std::copy(std::begin(U.values),std::end(U.values),game);
+  poll_controller_shortcuts(U.values); assert(aimLeft && notices.size()==1 && notices.back()=="First-person aiming: Left stick (classic)");
+  ShortcutPoll gamePoll; gamePoll.poll(current(),U.values,game); assert(game[kPadL3]==0);
+  poll_controller_shortcuts(U.values); poll_controller_shortcuts(U.values); assert(aimLeft && notices.size()==1);
+  U.values[kPadL3]=0; poll_controller_shortcuts(U.values);
+  U.values[kPadL3]=1; poll_controller_shortcuts(U.values); U.values[kPadL3]=0; poll_controller_shortcuts(U.values);
+  assert(!aimLeft && notices.size()==2 && notices.back()=="First-person aiming: Right stick (HD)");
+ }
+ // a key works the same way (here F7, set as a file would)
+ m=current(); m.shortcuts[kAimStick].keys[0]={kVK_F7}; set_current(m,false);
+ keyPress(SDL_SCANCODE_F7); assert(aimLeft && notices.size()==3);
+ g_open=true; m=current(); m.shortcuts[kAimStick]={}; set_current(m,false); aimLeft=false; notices.clear(); frame(true); frame(); frame();
  // The actual Controls drawing uses the same right-click gesture, and can still bind Mouse 2.
  controlsDrawing=true;frame(true);frame();frame();
  int chip=4*kA+kColKey0;
@@ -275,7 +304,7 @@ static int shortcut_ui_test() {
  assert(mouse_button(1,true));assert(mouse_button(1,false));frame();assert(current().keys[kA][0]==kMouse2);
 
  g_open=false; ImGui::DestroyContext(); std::filesystem::remove(file); input::set_prompt_window(nullptr); SDL_DestroyWindow(window); SDL_Quit();
- puts("Shortcut UI: real SDL capture, primary/alternate dispatch, reload, Escape, right mouse, Home/Capture, combinations and shared clearing passed");
+ puts("Shortcut UI: real SDL capture, primary/alternate dispatch, reload, Escape, right mouse, Home/Capture, combinations, shared clearing and Switch first-person aiming on L3 passed");
  return 0;
 }
 

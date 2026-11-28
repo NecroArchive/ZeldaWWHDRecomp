@@ -274,6 +274,9 @@ int wheel_zoom_smoothing();        // Mouse wheel: Zoom's ease (#696): mouse_whe
 void set_wheel_zoom_smoothing(int choice);
 bool aim_left_stick();             // First-person aiming: false Right stick (HD, default), true Left stick (classic) (#666)
 void set_aim_left_stick(bool left);
+// the Switch first-person aiming shortcut (input_map::kAimStick): flips and saves the choice, as Controls ›
+// Camera does; returns its notice in the game's language (aim_stick::notice)
+std::string switch_aim_stick();
 float steer_swing_degrees(bool player_camera);  // camera.cpp, once per logic step
 bool steer_pinch(int phase, float d);           // 0 begin (true: on), 1 move, 2 end
 void steer_reset();                // a state load

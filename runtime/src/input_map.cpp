@@ -207,6 +207,8 @@ static const ShortcutInfo kShortcuts[kShortcutCount] = {
     {"Mute", "Mute", "Display and audio", {}, {}},
     {"VolumeDown", "Volume down", "Display and audio", {}, {}},
     {"VolumeUp", "Volume up", "Display and audio", {}, {}},
+    // #666 follow-up: unbound by default (no key, no button); overlay::activate_shortcut flips the saved choice
+    {"AimStick", "Switch first-person aiming", "Controls", {}, {}},
 };
 const ShortcutInfo& shortcut_info(int a) { return kShortcuts[a]; }
 std::array<ShortcutBinding, kShortcutCount> shortcut_defaults() {

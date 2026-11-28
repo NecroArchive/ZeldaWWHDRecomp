@@ -1429,6 +1429,57 @@ static void test_shortcuts() {
     raw[kPadDUp] = 1; CHECK(poll.poll(m, raw, game) == std::vector<int>{kPhoto});
     m.shortcuts[kMute].hold = kPadDUp; m.shortcuts[kMute].button = kPadOptions;
     CHECK(shortcut_conflict(m, kPhoto) && shortcut_conflict(m, kMute));
+    {
+        // #666 follow-up: Switch first-person aiming, unbound by default (no key, no button: nothing changes)
+        const Mapping d = Mapping::defaults();
+        CHECK(std::string(shortcut_info(kAimStick).id) == "AimStick" && kAimStick == kShortcutCount - 1);
+        CHECK(d.shortcuts[kAimStick] == ShortcutBinding{});
+        CHECK(shortcut_defaults()[kAimStick] == ShortcutBinding{});
+        CHECK(to_json(d).find("\"AimStick\": {\"keys\": [{\"key\": null, \"modifiers\": 0}, {\"key\": null, "
+                              "\"modifiers\": 0}], \"hold\": \"\", \"button\": \"\"}") != std::string::npos);
+        // a file from before it: unbound, the rest as saved
+        Mapping old = d; old.shortcuts[kMute].keys[0] = {kVK_ANSI_K};
+        std::string text = to_json(old);
+        const size_t at = text.find(",\n    \"AimStick\"");
+        CHECK(at != std::string::npos);
+        text.erase(at, text.find('}', text.find("\"button\"", at)) + 1 - at);
+        CHECK(text.find("AimStick") == std::string::npos);
+        Mapping back;
+        CHECK(from_json(text, back) && back == old);
+        // bound to L3 (the Wii U's left stick click keeps its own L3 binding: no conflict), a key and a combination:
+        // the round trip keeps them
+        Mapping a = d;
+        CHECK(a.pad[kStickLClick] == kPadL3);
+        a.shortcuts[kAimStick].button = kPadL3;
+        a.shortcuts[kAimStick].keys = {ShortcutKey{kVK_F7}, ShortcutKey{kVK_ANSI_J, kModCtrl}};
+        CHECK(!shortcut_conflict(a, kAimStick));
+        CHECK(shortcut_for_key(a, kVK_F7, 0) == kAimStick && shortcut_for_key(a, kVK_ANSI_J, kModCtrl) == kAimStick);
+        CHECK(shortcut_for_key(a, kVK_ANSI_J, 0) != kAimStick);
+        CHECK(from_json(to_json(a), back) && back == a && back.shortcuts[kAimStick].button == kPadL3);
+        Mapping combo = d;
+        combo.shortcuts[kAimStick].hold = kPadLB; combo.shortcuts[kAimStick].button = kPadL3;
+        CHECK(!shortcut_conflict(combo, kAimStick));
+        CHECK(from_json(to_json(combo), back) && back == combo);
+        // L3 alone: one activation per press, and the game does not get L3 while it is held
+        float r[kPadCount]{}, g[kPadCount]{}; ShortcutPoll p;
+        r[kPadL3] = 1; r[kPadA] = 1; std::copy(std::begin(r), std::end(r), g);
+        CHECK(p.poll(a, r, g) == std::vector<int>{kAimStick});
+        CHECK(g[kPadL3] == 0 && g[kPadA] == 1);
+        std::copy(std::begin(r), std::end(r), g);
+        CHECK(p.poll(a, r, g).empty() && g[kPadL3] == 0);  // held: no repeat
+        r[kPadL3] = 0; std::copy(std::begin(r), std::end(r), g);
+        CHECK(p.poll(a, r, g).empty());
+        r[kPadL3] = 1; CHECK(p.poll(a, r, g) == std::vector<int>{kAimStick});
+        // the hold-and-press combination: LB alone reaches the game, LB + L3 switches and takes both
+        ShortcutPoll pc; float rc[kPadCount]{}, gc[kPadCount]{};
+        rc[kPadLB] = 1; std::copy(std::begin(rc), std::end(rc), gc);
+        CHECK(pc.poll(combo, rc, gc).empty() && gc[kPadLB] == 1);
+        rc[kPadL3] = 1; std::copy(std::begin(rc), std::end(rc), gc);
+        CHECK(pc.poll(combo, rc, gc) == std::vector<int>{kAimStick} && gc[kPadLB] == 0 && gc[kPadL3] == 0);
+        // a binding another shortcut has is a conflict, as for the others
+        a.shortcuts[kMute].button = kPadL3;
+        CHECK(shortcut_conflict(a, kAimStick) && shortcut_conflict(a, kMute));
+    }
 }
 
 // Settings sizes by screen (mobile_ui.h): phones a compact layout, tablets and handhelds as before, desktop as before
