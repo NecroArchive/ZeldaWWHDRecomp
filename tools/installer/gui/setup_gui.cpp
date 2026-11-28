@@ -54,6 +54,7 @@
 #endif
 
 #include "../../../runtime/src/platform/appimage_notice.h"  // the v0.2.13 .data hint (issue #55)
+#include "../../../runtime/src/randomizer_settings.h"
 #include "game_args.h"
 #include "imgui.h"
 #include "imgui_impl_sdl3.h"
@@ -1383,59 +1384,9 @@ struct Rando {
 };
 static Rando R;
 
-// the settings by page, by the randomizer's own names (options.cpp nameToSetting); labels are ours
-struct RandoRow {
-    const char* name;
-    const char* label;
-};
-static const RandoRow kRandoPlaces[] = {
-    {"Progress Dungeons", "Dungeons"}, {"Progress Great Fairies", "Great Fairies"}, {"Progress Puzzle Caves", "Puzzle caves"},
-    {"Progress Combat Caves", "Combat caves"}, {"Progress Short Sidequests", "Short sidequests"},
-    {"Progress Long Sidequests", "Long sidequests"}, {"Progress Spoils Trading", "Spoils trading"},
-    {"Progress Minigames", "Minigames"}, {"Progress Free Gifts", "Free gifts"}, {"Progress Mail", "Mail"},
-    {"Progress Platforms Rafts", "Platforms and rafts"}, {"Progress Submarines", "Submarines"},
-    {"Progress Eye Reefs", "Eye reef chests"}, {"Progress Octos Gunboats", "Big Octos and gunboats"},
-    {"Progress Triforce Charts", "Triforce charts"}, {"Progress Treasure Charts", "Treasure charts"},
-    {"Progress Exp Purchases", "Expensive purchases"}, {"Progress Misc", "Miscellaneous"},
-    {"Progress Tingle Chests", "Tingle chests"}, {"Progress Battlesquid", "Battlesquid"},
-    {"Progress Savage Labyrinth", "Savage Labyrinth"}, {"Progress Island Puzzles", "Island puzzles"},
-    {"Progress Dungeon Secrets", "Dungeon secrets"}, {"Progress Obscure", "Obscure"},
-};
-static const RandoRow kRandoDungeons[] = {
-    {"Num Required Dungeons", "Required dungeons"}, {"Required Boss Items", "Required bosses' items"},
-    {"Dungeon Small Keys", "Small keys"}, {"Dungeon Big Keys", "Big keys"}, {"Dungeon Maps And Compasses", "Maps and compasses"},
-    {"Remove Swords", "Swordless"}, {"Random Charts", "Randomize charts"}, {"CTMC", "Chest type matches contents"},
-    {"Skip Refights", "Skip boss refights"}, {"Open DRC", "Open Dragon Roost Cavern"},
-    {"Progressive Magic Always Double", "Magic always double"}, {"Damage Multiplier", "Damage multiplier"},
-};
-static const RandoRow kRandoEntrances[] = {
-    {"Randomize Dungeon Entrances", "Dungeon entrances"}, {"Randomize Boss Entrances", "Boss entrances"},
-    {"Randomize Miniboss Entrances", "Miniboss entrances"}, {"Randomize Cave Entrances", "Cave entrances"},
-    {"Randomize Door Entrances", "Door entrances"}, {"Randomize Misc Entrances", "Other entrances"},
-    {"Mix Dungeons", "Mix dungeons"}, {"Mix Bosses", "Mix bosses"}, {"Mix Minibosses", "Mix minibosses"},
-    {"Mix Caves", "Mix caves"}, {"Mix Doors", "Mix doors"}, {"Mix Misc", "Mix others"},
-    {"Decouple Entrances", "Decouple entrances"}, {"Random Start Island", "Random starting island"},
-};
-static const RandoRow kRandoHints[] = {
-    {"Ho Ho Hints", "Old Man Ho Ho hints"}, {"Ho Ho Triforce Hints", "Ho Ho Triforce hints"}, {"Korl Hints", "King of Red Lions hints"},
-    {"Korl Sword Hints", "KoRL sword hints"}, {"Kreeb Bow Hints", "Kreeb bow hints"}, {"Clearer Hints", "Clearer hints"},
-    {"Use Always Hints", "Always hints"}, {"Hint Importance", "Hint importance"}, {"Path Hints", "Path hints"},
-    {"Barren Hints", "Barren hints"}, {"Item Hints", "Item hints"}, {"Location Hints", "Location hints"},
-};
-static const RandoRow kRandoStart[] = {
-    {"Starting HC", "Heart containers"}, {"Starting HP", "Pieces of heart"}, {"Starting Joy Pendants", "Joy pendants"},
-    {"Starting Skull Necklaces", "Skull necklaces"}, {"Starting Boko Baba Seeds", "Boko Baba seeds"},
-    {"Starting Golden Feathers", "Golden feathers"}, {"Starting Knights Crests", "Knight's crests"},
-    {"Starting Red Chu Jellys", "Red Chu jellies"}, {"Starting Green Chu Jellys", "Green Chu jellies"},
-    {"Starting Blue Chu Jellys", "Blue Chu jellies"}, {"Start With Random Item", "Start with a random item"},
-};
-static const RandoRow kRandoConvenience[] = {
-    {"Instant Text", "Instant text boxes"}, {"Reveal Sea Chart", "Reveal the full sea chart"},
-    {"Quiet Swift Sail", "Quiet Swift Sail"}, {"Add Shortcut Warps", "Warps between dungeons"}, {"Fix RNG", "Fixed RNG"},
-    {"Performance", "Performance"}, {"Invert Compass", "Invert the sea compass"}, {"Remove Music", "Remove music"},
-    {"Classic Mode", "Classic mode"}, {"Pig Color", "Outset pig colour"}, {"Target Type", "Targeting"},
-    {"Camera", "Camera"}, {"First Person Camera", "First-person camera"}, {"Gyroscope", "Gyroscope"}, {"UI Display", "HUD"},
-};
+// the settings by page, by the randomizer's own names, and our labels: runtime/src/randomizer_settings.h (the game's
+// Settings > Randomizer uses the same)
+using RandoRow = rando_settings::Row;
 
 static void rando_send(const std::string& cmd, const std::string& fields = "") { request(cmd, fields); }
 
@@ -1608,20 +1559,12 @@ static void screen_randomizer() {
             ImGui::SameLine();
             if (button("Use this permalink", ImVec2(0, 0), false, !busy() && R.permalink_edit[0]))
                 rando_send("rando_change", "\"permalink\": " + jstr(R.permalink_edit));
-            static const char* pages[] = {"Where items can be", "Dungeons", "Entrances", "Hints", "Starting items", "Convenience"};
-            for (int i = 0; i < 6; i++) {
+            for (int i = 0; i < (int)std::size(rando_settings::kPages); i++) {
                 if (i) ImGui::SameLine();
-                if (ImGui::RadioButton(pages[i], R.page == i)) R.page = i;
+                if (ImGui::RadioButton(rando_settings::kPages[i].title, R.page == i)) R.page = i;
             }
             ImGui::Separator();
-            switch (R.page) {
-            case 0: rando_rows(kRandoPlaces, std::size(kRandoPlaces)); break;
-            case 1: rando_rows(kRandoDungeons, std::size(kRandoDungeons)); break;
-            case 2: rando_rows(kRandoEntrances, std::size(kRandoEntrances)); break;
-            case 3: rando_rows(kRandoHints, std::size(kRandoHints)); break;
-            case 4: rando_rows(kRandoStart, std::size(kRandoStart)); break;
-            case 5: rando_rows(kRandoConvenience, std::size(kRandoConvenience)); break;
-            }
+            rando_rows(rando_settings::kPages[R.page].rows, rando_settings::kPages[R.page].count);
             ImGui::EndChild();
             ImGui::EndTabItem();
         }

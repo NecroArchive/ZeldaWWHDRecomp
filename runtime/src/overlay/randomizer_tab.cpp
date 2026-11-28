@@ -12,6 +12,7 @@
 #include "../mods/mod_json.h"
 #include "../mods/randomizer_job.h"
 #include "../randomizer_identity.h"
+#include "../randomizer_settings.h"
 #include "../randomizer_spoiler.h"
 #include "extensions.h"
 #include "hostui.h"
@@ -54,7 +55,20 @@ struct Seed {
     std::string id, hash, permalink, seed, created, spoiler_log;
     bool imported = false;  // made with the official randomizer (setup's Import seed...): no permalink or spoiler log
     std::map<std::string, std::string> builds;  // "plain" / "hooks" -> code-builds fingerprint
+    rando_settings::Description settings;       // what its settings are (setup's describe_settings)
 };
+
+// seeds.json "settings" (randomizer_seeds.py describe_settings); an empty object: setup could not read them
+rando_settings::Description describe(const json::Value& v) {
+    rando_settings::Description d;
+    if (v.type != json::Value::Object || v.get("closest").string().empty()) return d;
+    d.known = true;
+    d.preset = v.get("preset").string(), d.closest = v.get("closest").string();
+    for (const auto& c : v.get("changed").array)
+        if (c.array.size() == 2) d.changed.emplace_back(c.array[0].string(), c.array[1].string());
+    for (const auto& [k, n] : v.get("values").object) d.values[k] = int(n.number);
+    return d;
+}
 
 struct State {
     bool loaded = false;
@@ -112,6 +126,7 @@ void load() {
         x.seed = s.get("seed").string(), x.created = s.get("created").string(), x.spoiler_log = s.get("spoiler_log").string();
         x.imported = s.get("imported").boolean;
         for (const auto& [k, b] : s.get("builds").object) x.builds[k] = b.string();
+        x.settings = describe(s.get("settings"));
         if (x.id.size() == 16) S.seeds.push_back(x);
     }
     for (const auto& [k, b] : v.get("vanilla_builds").object) S.vanilla_builds[k] = b.string();
@@ -243,7 +258,8 @@ void draw_new_game() {
         if (ImGui::Button("OK")) randomizer_job::dismiss();
         return;
     }
-    ImGui::TextUnformatted("Settings");
+    // (for the next game only: this game's own settings are its permalink's, shown above)
+    ImGui::TextUnformatted("Settings for a new game");
     for (int i = 0; i < 3; i++) {
         ImGui::SameLine();
         if (overlay::widgets::radio(kPresetLabels[i], F.preset == i)) F.preset = i;
@@ -265,7 +281,15 @@ void draw_new_game() {
     overlay::widgets::note("%s Setup makes it from your installed game while you play, checks it and builds it; the "
                            "next start plays it. Each randomized game has its own saves and save states; your normal save is never "
                            "touched.",
-                           permalink ? "The permalink's settings and seed." : "A preset and a seed name.");
+                           permalink ? "The permalink's settings (all of them: the preset above is not used) and seed."
+                                     : "A preset and a seed name.");
+#ifdef __ANDROID__
+    overlay::widgets::note("A pasted permalink brings all its settings, entrance randomizer included.");
+#else
+    overlay::widgets::note("A pasted permalink brings all its settings, entrance randomizer included. Every setting can "
+                           "be chosen in the setup window (hold Shift while starting Wind Waker HD on Windows and macOS, "
+                           "or start it with --setup): Randomized games (TWWHD Randomizer)..., New game.");
+#endif
 }
 
 const Seed* this_seed() {
@@ -449,6 +473,8 @@ void draw() {
         overlay::widgets::note("Seed %s, made %s. TWWHD Randomizer 1.2.0 by SuperDude88 and contributors (MIT).", me->seed.c_str(),
                                me->created.c_str());
         ImGui::TextWrapped("Permalink: %s", me->permalink.c_str());
+        // what this game's settings are: they come from its permalink, whatever the new-game choice below says
+        for (const std::string& line : rando_settings::summary(me->settings)) ImGui::TextWrapped("%s", line.c_str());
         if (ImGui::Button("Copy the permalink")) {
             const std::string link = me->permalink;
             hostui::post([link] { hostui::set_clipboard(link); });

@@ -114,6 +114,15 @@ what is on `devel` and not released yet (also in the
   and in a terminal; `--desktop-entry` / `--no-desktop-entry` answer it). It is on by default for a source build
   and off when setup runs from the AppImage, which starts the game itself. Updates and repairs keep the choice,
   and "no" removes the `wwhd.desktop` an earlier setup wrote (only setup's own entry, never another one).
+- **Settings › Randomizer says what the current game's settings are.** Under the seed and its permalink the page now
+  shows the settings the game was made with, as the randomizer reads them from that seed: the preset they are
+  ("Settings: Standard (the preset)") or "custom" with the closest preset, the entrance randomizer in a few words
+  ("Entrances: full (every kind); mixed, decoupled") and the other settings that differ from that preset. The preset
+  choice below is now labelled **Settings for a new game**: it only applies to the next game made, so a game made
+  from a pasted permalink with the entrance randomizer no longer looks as if its settings were lost. The page also
+  says that a pasted permalink brings all its settings and that every setting can be chosen in the setup window
+  (Randomized games › New game). Setup writes the summary when it makes a game, and for games made earlier when it
+  makes the next one or its Randomized games page opens.
 
 ### Fixed
 

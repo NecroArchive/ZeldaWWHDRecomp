@@ -11,8 +11,11 @@ randomizer are USA only.
 ## Make a randomized game in the game
 
 In the game, open **Settings > Randomizer** (Esc opens Settings on a computer):
-- **New randomized game**: choose **Beginner**, **Standard** or **Everything**, type a seed name
-  (or leave it empty for a new random one), or paste a **Permalink** instead (its settings and seed).
+- **New randomized game**: choose **Beginner**, **Standard** or **Everything** (**Settings for a
+  new game**: they apply to the game made next, not to the one you play), type a seed name (or leave
+  it empty for a new random one), or paste a **Permalink** instead: it brings all its settings
+  (entrance randomizer included) and its seed, and the preset is not used. Every setting can be
+  chosen in the setup window (**Randomized games › New game**; see [In the setup window](#in-the-setup-window)).
 - **Make this game**: setup makes it from your installed game in the background while you keep
   playing, checks it and builds it. The page shows what it is doing; **Cancel** stops it (on a
   computer). If it can't be made, the page says why; the game you play stays as it is.
@@ -21,7 +24,11 @@ In the game, open **Settings > Randomizer** (Esc opens Settings on a computer):
   its own saves; **Later** keeps playing what you play now, and the next start plays the new game.
 
 The same page shows:
-- this game's seed hash words and permalink;
+- this game's seed hash words and permalink, and what its settings are: the preset they are, or
+  "custom" with the closest preset, the entrance randomizer (for example "Entrances: dungeons, caves;
+  mixed") and the other settings that differ from that preset. Setup reads them from the seed's own
+  settings when it makes it (for a game made with an earlier release: when it makes the next one or
+  its Randomized games page opens; until then the page says they are the permalink's);
 - the games already built, to play from the next start (on a computer), including the game as it is;
 - the spoiler log, after a question: the way to the end, every location, entrances, hints,
   charts, and a map of the sea chart's squares with the places of the locations. Setup reads
@@ -34,6 +41,10 @@ Switching between games that were built before needs no new build. Each seed tak
 The decomp version can't make randomized games; start the normal game for them.
 
 ## In the setup window
+
+The setup window opens when the game is not prepared yet, or when you hold **Shift** while starting
+Wind Waker HD (Windows, macOS) or start it with `--setup` (any computer, the way on Linux; for example
+`./wind-waker-hd --setup`). Choose **Randomized games (TWWHD Randomizer)...**.
 
 **Randomized games (TWWHD Randomizer)** has the same, and more:
 - **New game** has the presets, the seed name, the permalink (copy, or paste one), and every

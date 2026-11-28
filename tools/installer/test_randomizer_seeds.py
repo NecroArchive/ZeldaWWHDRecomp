@@ -32,9 +32,9 @@ def done(**k):
     print(json.dumps(dict(ok=True, **k))); sys.exit(0)
 def fail(e):
     print(json.dumps(dict(ok=False, error=e))); sys.exit(1)
-link = lambda: "LINK-%s-%s" % (st["preset"], st["seed"])
+link = lambda: "LINK-%s-%s" % (st["preset"], st["seed"]) + ("-ent%d" % st["ent"] if st.get("ent") else "")
 c = cmd[0]
-if c == "preset": st["preset"] = cmd[1]; done(preset=cmd[1], permalink=link())
+if c == "preset": st["preset"] = cmd[1]; st["mail"] = int(cmd[1] == "everything"); st["ent"] = 0; done(preset=cmd[1], permalink=link())
 if c == "set-seed": st["seed"] = cmd[1]; done(seed=cmd[1])
 if c == "new-seed": st["n"] = st.get("n", 0) + 1; st["seed"] = "Random%d" % st["n"]; done(seed=st["seed"])
 if c == "permalink": done(permalink=link())
@@ -43,13 +43,16 @@ if c == "load-permalink":
     _, st["preset"], st["seed"] = cmd[1].split("-", 2); done(permalink=link())
 if c == "locations": done(locations=[])
 if c == "settings":
-    st.setdefault("mail", 0)
-    done(settings={"Progress Mail": {"value": st["mail"], "kind": "bool", "min": 0, "max": 1, "choices": []}},
+    st.setdefault("mail", 0); st.setdefault("ent", 0)
+    done(settings={"Progress Mail": {"value": st["mail"], "kind": "bool", "min": 0, "max": 1, "choices": []},
+                   "Randomize Cave Entrances": {"value": st["ent"], "kind": "choice", "min": 0, "max": 2,
+                                                "choices": ["Off", "Caves", "Caves and fairy fountains"]}},
          seed=st["seed"], permalink=link())
 if c == "set":
-    if cmd[1] != "Progress Mail": fail("no plain setting named " + cmd[1])
-    st["mail"] = int(cmd[2]); done(name=cmd[1], value=st["mail"])
-if c == "defaults": st["preset"] = "standard"; st["mail"] = 0; done(seed=st["seed"])
+    key = {"Progress Mail": "mail", "Randomize Cave Entrances": "ent"}.get(cmd[1])
+    if not key: fail("no plain setting named " + cmd[1])
+    st[key] = int(cmd[2]); done(name=cmd[1], value=st[key])
+if c == "defaults": st["preset"] = "standard"; st["mail"] = 0; st["ent"] = 0; done(seed=st["seed"])
 if c == "generate":
     game, out = Path(cmd[cmd.index("--game") + 1]), Path(cmd[cmd.index("--out") + 1])
     for d in ("code", "content/Common", "meta"): (out / d).mkdir(parents=True, exist_ok=True)
@@ -145,6 +148,32 @@ class Seeds(Base):
         self.assertEqual(listing["playing"], "vanilla")
         self.assertTrue(listing["seeds"][0]["files"])
         self.assertTrue(listing["seeds"][0]["spoiler_log"].endswith("Spoiler Log.txt"))
+
+    def test_settings_described(self):
+        # the preset a seed's settings are, as the randomizer reads them (seeds.json "settings": the game's page)
+        a, _ = self.make(preset="everything", seed="Alpha")
+        self.assertEqual((a["settings"]["preset"], a["settings"]["changed"]), ("everything", []))
+        self.assertEqual(a["settings"]["values"], {"Progress Mail": 1, "Randomize Cave Entrances": 0})
+        # custom settings (a permalink with cave entrances, say): the closest preset and what differs
+        rs.call(setup, rs.settings_dir(self.data), "preset", "standard")
+        rs.call(setup, rs.settings_dir(self.data), "set", "Randomize Cave Entrances", 2)
+        b, _ = self.make(seed="Beta")
+        self.assertEqual(b["settings"]["preset"], "")
+        self.assertEqual(b["settings"]["closest"], "standard")
+        self.assertEqual(b["settings"]["changed"], [["Randomize Cave Entrances", "Caves and fairy fountains"]])
+        self.assertEqual(rs.find(self.data, b["id"])["settings"], b["settings"])
+        self.assertFalse([p for p in rs.rando_dir(self.data).iterdir() if p.name.startswith(".describe")])
+        # a seed made before the description existed gets one with the next seed (or the setup window's page)
+        reg = rs.load(self.data)
+        del reg["seeds"][0]["settings"]
+        reg["seeds"].append({"id": "0123456789abcdef", "imported": True, "hash": "", "permalink": ""})
+        rs.save(self.data, reg)
+        rs.describe_missing(setup, self.data)
+        seeds = rs.load(self.data)["seeds"]
+        self.assertEqual(seeds[0]["settings"]["preset"], "everything")
+        self.assertNotIn("settings", seeds[2])  # (imported: no settings of its own)
+        self.assertEqual(rs.value_text({"kind": "count", "value": 3}), "3")
+        self.assertEqual(rs.value_text({"kind": "bool", "value": 0}), "off")
 
     def test_same_settings_reuse_the_seed(self):
         first, _ = self.make(seed="Alpha")
