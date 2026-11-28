@@ -420,6 +420,11 @@ int main() {
                               "How long the camera takes to catch up with the wheel's zoom. Off: at once."})
             for (uint32_t lang = 2; lang <= 5; lang++) assert(game_settings_text::table().count(w) && !game_settings_text::tr(w, lang).empty());
         assert(game_settings_text::tr("0.3 s", 3) == "0,3 s");
+        // ... and its Wheel zoom (Original / Distance only)
+        for (const char* w : {"Wheel zoom", "Original", "Distance only",
+                              "Distance only: closer or further, same height and angle. Original: the game's zoom, lower as it comes closer."})
+            for (uint32_t lang = 2; lang <= 5; lang++) assert(game_settings_text::table().count(w) && !game_settings_text::tr(w, lang).empty());
+        assert(game_settings_text::tr("Distance only", 3) == "Nur Abstand" && game_settings_text::tr("Wheel zoom", 2) == "Zoom à la molette");
     }
     std::puts("game_settings_page_test: ok");
 }

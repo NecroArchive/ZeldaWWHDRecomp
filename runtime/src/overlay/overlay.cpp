@@ -3445,8 +3445,14 @@ void controls_camera_page() {
     help("In the game window. First person: forward enters first person, back leaves it. Zoom: forward brings the "
          "camera closer, back further, as the right stick's zoom does in the game, with its limits; not in first "
          "person. Bindings: the wheel is the Wheel up / Wheel down bindings (Controls > Bindings).");
-    if (wheel == 1) {  // Zoom: how the camera catches up with the wheel (mouse_wheel.h kSmoothSeconds)
+    if (wheel == 1) {  // Zoom: what it zooms (mouse_wheel.h Style) and how the camera catches up (kSmoothSeconds)
         ImGui::Indent();
+        int zstyle = mods::wheel_zoom_style();
+        if (combo("Wheel zoom", &zstyle, "Original\0Distance only\0"))
+            hostui::post([zstyle] { mods::set_wheel_zoom_style(zstyle); });
+        help("Distance only: the camera only moves closer to Link or further away and keeps its height, angle and "
+             "field of view. Original: the game's own zoom, which also lowers the camera as it comes closer and "
+             "raises it as it goes further. Both stay within the game's limits.");
         int smooth = mods::wheel_zoom_smoothing();
         if (combo("Wheel zoom smoothing", &smooth, "Off\0" "0.15 s\0" "0.3 s\0" "0.5 s\0" "1 s\0"))
             hostui::post([smooth] { mods::set_wheel_zoom_smoothing(smooth); });

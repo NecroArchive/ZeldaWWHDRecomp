@@ -58,6 +58,10 @@
 //   mouse (a stick magnitude in its decision only) while a zoom waits, so it runs from the follow camera too, in the
 //   styles with manualCamera (on foot, swimming, sailing's free look); first person, aiming, events and the other
 //   camera modes never take it, and what they leave is dropped (mouse_wheel::kDropSteps).
+//   Wheel zoom: Distance only (the default; mouse_wheel.h Style): f28 is left alone and the same rate moves only
+//   manualCamera's radius target (its work's mDirection.mRadius, dCamera_c+0x3AC) by -(rate x the style's radius step,
+//   camera parameter 14), before the game's radius range addition clamps it into the style's limits; the centre
+//   height, latitude and field of view keep their values (wheel_zoom_rate).
 //
 // Invert camera up/down (Controls; issue #167): the camera's own reads of the right stick's Y are
 //   negated (instruction hooks right after each call, camera_invert.h lists every reader and why),
@@ -136,6 +140,7 @@ uint64_t g_move_step = 0;       // logic step of the last mouse movement
 float g_wheel = 0;              // wheel movement not yet used
 mouse_wheel::Zoom g_zoom;       // Mouse wheel: Zoom, the zoom still to give the camera (issue #696)
 uint64_t g_zoom_step = ~0ull;   // the last step manualCamera zoomed by the wheel (traces)
+uint32_t g_manual_style = ~0u;  // the style manualCamera runs (its argument r4; Wheel zoom: Distance only's radius step)
 bool g_left = false;            // left button held (captured)
 uint64_t g_manual_step = ~0ull, g_subject_step = ~0ull;  // last step manualCamera / subjectCamera ran
 std::atomic<uint32_t> g_link{0};
@@ -667,23 +672,48 @@ static void look_pitch_give(Cpu* c) {
         trace("look pitch: rate %.3f x latitude step %.2f -> %.3f degrees (limits %.1f .. %.1f)", g_look_pitch.rate,
               g_look_pitch.per, c->f[1].ps0, c->f[2].ps0, c->f[3].ps0);
 }
-// Mouse wheel: Zoom (issue #696, mouse_wheel.h): this step's part of the wheel's zoom, added to f28 after Look up
-// and down took the stick's (and the mouse's) rate, so it always zooms. True 60: each step of a 30 Hz frame gets the
-// frame's rate, as the game's stick (manRangeAdd takes x dt).
+// Mouse wheel: Zoom (issue #696, mouse_wheel.h): this step's part of the wheel's zoom.
+//   Original: added to f28 after Look up and down took the stick's (and the mouse's) rate, so it always zooms. True 60:
+//   each step of a 30 Hz frame gets the frame's rate, as the game's stick (manRangeAdd takes x dt).
+//   Distance only: the radius target alone, -(rate x radius step) (camParamVal(style, 14): the style table's row +
+//   8 + 14 x 4), f28 untouched. Here, at @0251053C, the target is past the style's start-up copy (m11C == 0) and before
+//   the radius's limited_range_addition (024F7DF4: the sum clamped into [minimum, maximum radius], the blocked follow
+//   rate when it was), which reads it from the work. True 60: the frame's whole rate on its first step
+//   (frame_first_rate), where manRangeAdd makes the frame's range test.
+constexpr uint32_t kManualRadius = 0x37C + 0x30;                // dCamera_c::mWork (ManualWorkHD) mDirection.mRadius
+constexpr uint32_t kViewFovy = 0x3C + 0x24, kManualHeight = 0x37C + 0x20;  // mViewCache.mFovy, the work's mCenterHeight
 static void wheel_zoom_rate(Cpu* c) {
     const float part = mouse_wheel::smooth_part(wheel_zoom_smoothing());  // Wheel zoom smoothing (Off: all at once)
+    const bool distance = wheel_zoom_style() == mouse_wheel::kStyleDistance;
+    const uint32_t style = g_manual_style;
     float w;
     double pending;
     {
         std::lock_guard<std::mutex> lk(g_mu);
 #if WWHD_DECOMP
-        if (t60::active() && wwhd_t60_steps > 1) w = mouse_wheel::frame_rate(g_zoom, wwhd_t60_frame, step(), part);
+        if (t60::active() && wwhd_t60_steps > 1)
+            w = distance ? mouse_wheel::frame_first_rate(g_zoom, wwhd_t60_frame, t60::first_step(), step(), part)
+                         : mouse_wheel::frame_rate(g_zoom, wwhd_t60_frame, step(), part);
         else
 #endif
             w = mouse_wheel::rate(g_zoom, step(), part);
         pending = g_zoom.pending;
     }
     if (w == 0) return;
+    if (distance) {
+        if (style == ~0u) return;  // (no manualCamera run recorded)
+        const uint32_t cam = c->r[31];
+        const uint32_t params = GD(0x1004487C) + style * 0x84 + 8;  // the style's camParamVal row
+        const float step_r = (float)ldf32(params + 14 * 4);
+        const float before = (float)ldf32(cam + kManualRadius);
+        const float after = mouse_wheel::distance_radius(before, w, step_r);
+        stf32(cam + kManualRadius, after);
+        g_zoom_step = step();
+        if (trace_on())
+            trace("wheel zoom (distance): rate %.3f x radius step %.1f: target %.1f -> %.1f (limits %.0f .. %.0f), pending %.2f",
+                  w, step_r, before, after, ldf32(params + 11 * 4), ldf32(params + 12 * 4), pending);
+        return;
+    }
     const double before = c->f[28].ps0;
     c->f[28].ps0 = mouse_wheel::combine(before, w);
     g_zoom_step = step();
@@ -823,10 +853,16 @@ extern "C" void hook_0250D4E8(Cpu* c) {
 // which camera mode ran (for the mouse: manual camera vs first person)
 extern "C" void hook_0250FDC8(Cpu* c) {
     g_manual_step = step();
+    g_manual_style = c->r[4];
     uint32_t cam = c->r[3];
     int16_t before = (int16_t)ld16(cam + 0x42);
     f_0250FDC8_orig(c);
     camera_trace(cam, "manual", before);
+    // Mouse wheel: Zoom: the camera after each run while the wheel zooms and 3 s after (wheel run measurements): the
+    // drawn radius, latitude, centre height above Link's attention point and field of view, and the radius target
+    if (trace_on() && g_zoom_step != ~0ull && step() <= g_zoom_step + 90)
+        trace("wheel view: R=%.2f target=%.2f V=%d H=%.3f fov=%.3f eyeY=%.2f", ldf32(cam + 0x3C), ldf32(cam + kManualRadius),
+              (int16_t)ld16(cam + 0x40), ldf32(cam + kManualHeight), ldf32(cam + kViewFovy), ldf32(cam + 0x3C + 0x14 + 4));
 }
 extern "C" void hook_025071FC(Cpu* c) {
     if (g_subject_step == ~0ull || step() > g_subject_step + 2) trace("first person (subject camera) starts");

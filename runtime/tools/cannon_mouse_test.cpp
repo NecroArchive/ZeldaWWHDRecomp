@@ -32,6 +32,7 @@ float mouse_sensitivity(){return sensitivity;}
 float mouse_first_person_scale(){return fp_scale;}
 bool direct_camera(){return false;} bool direct_boat_speed(){return false;}
 float camera_speed(){return 1;} int wheel_mode=2; int mouse_wheel_mode(){return wheel_mode;} int wheel_smooth=2; int wheel_zoom_smoothing(){return wheel_smooth;}
+int wheel_style=0; int wheel_zoom_style(){return wheel_style;}  // Original for the f28 tests (the default is Distance only)
 uint64_t step(){return clock_step;} double game_time(){return double(clock_step)/30;}
 bool trace_on(){return false;} void trace(const char*,...){}
 void link_executed(uint32_t){} void lock_on_filter_pad(input::PadState&){} void leaf_filter_pad(input::PadState&){}
@@ -64,7 +65,7 @@ float next_mode_value=-1,next_mode_y=-1;  // the stick nextMode saw (the wheel's
 uint32_t next_mode_result=12;  // the mode nextMode returns
 void f_024FA9C8_orig(Cpu* c){next_mode_value=(float)ldf32(c->r[3]+0x178);next_mode_y=(float)ldf32(c->r[3]+0x174);c->r[3]=next_mode_result;}
 void f_0250D4E8_orig(Cpu*){} void f_0250FDC8_orig(Cpu*){} void f_025071FC_orig(Cpu*){}
-void hook_0240EBB0(Cpu*); void hook_025071FC(Cpu*); void hook_024FA9C8(Cpu*);
+void hook_0240EBB0(Cpu*); void hook_025071FC(Cpu*); void hook_024FA9C8(Cpu*); void hook_0250FDC8(Cpu*);
 void site_02506CEC(Cpu*); void site_02508380(Cpu*); void site_025083C4(Cpu*);
 void site_0251053C(Cpu*); void site_02510DEC(Cpu*); void site_02510448(Cpu*);
 }
@@ -340,7 +341,43 @@ int main(){
         mods::wheel_mode=kFirstPerson;clock_step+=20;
         mods::mouse_wheel(1);input::PadState fp;mods::filter_pad(fp);assert(fp.buttons&input::kStickR);
         assert(rate(0)==0);
+        // Wheel zoom: Distance only (the default): f28 stays the game's (the stick's), the wheel moves manualCamera's
+        // radius target (+0x3AC) alone by -(rate x the style's radius step, camera parameter 14); the game's radius
+        // range addition then clamps it (not here: no game)
+        assert(kStyleDefault==kStyleDistance&&kStyleOriginal==0);
+        mods::wheel_mode=kZoom;mods::wheel_style=kStyleDistance;mods::wheel_smooth=kSmoothOff;clock_step+=20;
+        constexpr uint32_t row=0x1004487C+8;  // style 0's parameters (camParamVal)
+        stf32(row+11*4,150);stf32(row+12*4,700);stf32(row+14*4,20);
+        {Cpu h{};h.r[3]=kCamBase;h.r[4]=0;hook_0250FDC8(&h);}  // manualCamera runs style 0
+        m.r[31]=kCamBase;stf32(kCamBase+0x3AC,300);
+        auto target=[]{return (float)ldf32(kCamBase+0x3AC);};
+        wheel(1);assert(rate(0)==0&&target()==220&&rate(0)==0&&target()==220);  // a notch: 4 x 20 closer, at once
+        wheel(-1);assert(rate(0)==0&&target()==300);                           // and back
+        wheel(1);assert(rate(.5)==.5&&target()==220);    // the stick's own zoom as it is, the wheel's beside it
+        wheel(-2);assert(rate(-1)==-1&&target()==380);
+        wheel(.1f);assert(rate(0)==0&&close(target(),372));  // a trackpad's tenth: 8 closer
+        // smoothing: the same distance, eased out
+        mods::wheel_smooth=2;stf32(kCamBase+0x3AC,300);wheel(-1);
+        {int n=0;float last=300;while(rate(0)==0&&target()!=last){assert(target()>last);last=target();++n;}
+         assert(close(target(),380)&&n>=8&&n<=20);}
+        // Look up and down: the stick's rate goes to the latitude only, the wheel to the distance only
+        mods::wheel_smooth=kSmoothOff;look_pitch=true;stf32(kCamBase+0x3AC,300);
+        wheel(1);assert(rate(.7)==0&&target()==220&&close((float)lat(-0.0),-2.45f));
+        zoom_held=true;wheel(1);assert(rate(.5)==.5&&target()==140);zoom_held=false;  // Zoom while holding: the stick zooms
+        look_pitch=false;
+        // first person: nothing, also after
+        c.r[3]=kLinkBase;hook_025071FC(&c);stf32(kCamBase+0x3AC,300);wheel(1);assert(rate(0)==0&&target()==300);
+        clock_step+=10;
+        mods::wheel_style=kStyleOriginal;
         mods::wheel_mode=kBindings;mods::wheel_smooth=kSmoothDefault;
+        // Distance only in true 60: the frame's whole rate on its first step, nothing on the others; a zoom that comes
+        // inside a frame waits for the next first step (kept)
+        {Zoom d;add(d,1,1);
+         assert(frame_first_rate(d,5,false,1)==0&&d.pending==4&&wants(d));    // not a first step: waits
+         assert(frame_first_rate(d,5,false,1+kDropSteps)==0);drop_stale(d,2+kDropSteps);assert(d.pending==4);  // not dropped
+         assert(frame_first_rate(d,6,true,6,.25f)==1&&frame_first_rate(d,6,false,7,.25f)==0&&d.pending==3);
+         assert(frame_first_rate(d,7,true,8,.25f)==.75f&&d.pending==2.25f&&d.frame_rate==0);
+         assert(distance_radius(300,4,20)==220&&distance_radius(300,-.5f,20)==310);}
         // the pure rules: the old switch, frame_rate for true 60 (each step of a frame: the frame's rate)
         assert(from_switch(kZoom,false)==kZoom&&from_switch(kFirstPerson,false)==kBindings&&from_switch(kBindings,true)==kFirstPerson);
         Zoom z;add(z,1,1);
@@ -392,6 +429,7 @@ int main(){
     puts("Look up and down: the vertical rate goes to the latitude alone, once per manualCamera run, off by default PASS");
     puts("Zoom while holding: the original zoom while held, L's tap on release, ZL and Off, Zoom (original) unchanged PASS");
     puts("Mouse wheel: Zoom: a notch = 4 steps of the full rate, smoothing, fractions, both stick choices, wake, hold, dropped zoom PASS");
+    puts("Wheel zoom: Distance only: the radius target alone, the stick's f28 untouched, smoothing, both stick choices, true 60 PASS");
     puts("First-person mouse look: degrees per view, once per step, ease, inversion, stale movement, mouse camera off PASS");
     puts("First-person mouse look: later reads of a step keep their movement, First-person sensitivity, 1 degree per point PASS");
 }

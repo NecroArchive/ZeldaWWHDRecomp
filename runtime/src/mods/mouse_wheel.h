@@ -15,6 +15,13 @@
 // ease out exponentially, the share 1 - e^(-step / tau) per step, with the catch-up time (95 %) = 3 tau. The drawn
 // camera then still follows with the game's own follow ratio, as for the stick. Trackpads' fractional scrolls add
 // their fraction (a smooth zoom).
+// Wheel zoom (issue #696, the reporter's second follow-up): which zoom the wheel gives. Original is the game's zoom
+// above (the centre height, radius, latitude and field of view together: closer is also lower). Distance only (the
+// default) moves the camera's distance alone, along its line of sight: camera.cpp adds -(rate x the style's radius step)
+// to manualCamera's radius target (dCamera_c+0x3AC, its work's mDirection.mRadius) right before the game's radius
+// range addition, which keeps it in the style's limits (and its overrides: swimming, crawling ...); the game's follow
+// ratio, the blocked follow at a limit and the eye's wall push (bumpCheck) stay. f28 is left alone, so the centre
+// height, latitude and field of view do not move, in either Right stick up/down choice. The same smoothing applies.
 // Frame-rate independence: the logic runs at 30 Hz at 30 / 60 / 120 fps (interpolated), and the decomp build's true
 // 60 / 120 (N = 2 / 4 steps a frame) gives each step of a 30 Hz frame the frame's rate, as the game's stick does
 // (PORT_CAMERA_RATE @0251053C), and manRangeAdd takes x dt itself (frame_rate()).
@@ -65,6 +72,10 @@ constexpr float kSnap = 0.05f;
 // dropped, so it does not zoom later
 constexpr uint64_t kDropSteps = 4;
 
+// Wheel zoom: what the wheel zooms (Original: the game's zoom; Distance only: the radius alone)
+enum Style : int { kStyleOriginal = 0, kStyleDistance = 1, kStyleCount };
+constexpr int kStyleDefault = kStyleDistance;
+
 struct Zoom {
     float pending = 0;      // full-rate steps still to give (+ closer, - further)
     uint64_t last = 0;      // the last step the wheel added or the camera took (0: never)
@@ -102,6 +113,21 @@ inline float frame_rate(Zoom& z, uint32_t frame, uint64_t now, float part = 1.0f
     }
     return z.frame_rate;
 }
+// Distance only, true 60 (N steps a frame): the frame's whole rate on its first step and nothing on the others. The
+// radius target then moves once a frame by the 30 Hz frame's amount, and manRangeAdd's range test (made on the frame's
+// first step from that value) clamps it as at 30 Hz; later steps' adds would go untested. A zoom that comes while a
+// frame runs waits for the next frame's first step (kept from being dropped).
+inline float frame_first_rate(Zoom& z, uint32_t frame, bool first_step, uint64_t now, float part = 1.0f) {
+    if (!first_step) {
+        if (wants(z)) z.last = now;
+        return 0;
+    }
+    z.frame = frame;
+    z.frame_rate = 0;
+    return rate(z, now, part);
+}
+// Distance only: the radius target after this step's rate (+ closer); the game's range addition then clamps it
+inline float distance_radius(float radius, float rate, float radius_step) { return radius - rate * radius_step; }
 // the wheel's rate added to the game's own (the stick's, or the mouse's): a full stick and the wheel the same way zoom
 // no faster than the larger of the two (the stick's range, or the wheel's own step)
 inline double combine(double game, float wheel) {
