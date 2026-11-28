@@ -1351,19 +1351,22 @@ void tab_graphics() {
             "The game's own shadow blur, with a halo on both sides of an outline: outer (on the background behind "
             "an object) and inner (on the object's own edge).",
             "Blurs each surface only with itself: no halos. Shading stops exactly at outlines, a little flatter on "
-            "characters. Costs extra GPU time, most at high resolution scales. (Vulkan)",
+            "characters. Costs extra GPU time and VRAM (about 83 MB at 3x, 150 MB at 4x), and switching on compiles "
+            "new pipelines the first time. (Vulkan)",
             "No outer halo; objects' edges keep an approximation of the inner one, a little wider or narrower than "
-            "the original's: rounded characters, lit edges against the sky. Costs extra GPU time, most at high "
-            "resolution scales. (Vulkan)"};
+            "the original's: rounded characters, lit edges against the sky. Costs extra GPU time and VRAM (about "
+            "83 MB at 3x, 150 MB at 4x), and switching on compiles new pipelines the first time. (Vulkan)"};
         const char* label = "Shadow blur";
         // Vulkan only: off on the Metal renderer (a disabled combo never opens, so its popup is never inside)
         const bool blurOk = render::feature_available(render::kFeatureShadowBlur);
         const int mode = !blurOk || !render::shadow_edges() ? 0 : render::shadow_rims() ? 2 : 1;
         flow::next(flow::labeled(200, label), 30);
         ImGui::SetNextItemWidth(200);
-        if (!blurOk) ImGui::BeginDisabled();
+        ImGui::BeginDisabled(!blurOk);
+        if (!blurOk) ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
         const bool open = ImGui::BeginCombo(label, blur[mode]);
-        if (!blurOk) ImGui::EndDisabled();
+        if (!blurOk) ImGui::PopStyleColor();
+        ImGui::EndDisabled();
         if (open) {
             for (int i = 0; i < 3; i++) {
                 if (selectable(blur[i], i == mode) && i != mode)

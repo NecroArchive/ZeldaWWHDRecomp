@@ -1493,7 +1493,7 @@ VkImageView identity_sampled_view(Surface* s) {
 // dstX: the pass draws dst from that column on (the full-resolution stand-in's right half, draw.cpp), A too:
 // Hybrid's near-side flag, tested nearStep guide pixels apart (0: none)
 void draw_shadow_upsample(Surface* src,Surface* guide,Surface* dst,uint32_t dstSlice,float rims,uint32_t dstX,float nearStep,Surface* depth) {
-    if(!src||!guide||!dst||!src->image||!guide->image||!dst->image||src->image==dst->image||guide->image==dst->image||dst->fmt.depth)return;
+    if(!src||!guide||!dst||!src->image||!guide->image||!dst->image||src->image==dst->image||guide->image==dst->image||dst->fmt.depth||dstX>=dst->extent.width)return;
     if(depth&&(!depth->image||depth->image==dst->image))depth=nullptr;
     VkPipeline pipeline=shadow_upsample_pipeline(dst->fmt.pixel,dstX>0);
     end_encoder();
@@ -1513,7 +1513,6 @@ void draw_shadow_upsample(Surface* src,Surface* guide,Surface* dst,uint32_t dstS
     VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};write.dstSet=set;write.dstBinding=0;write.descriptorCount=3;
     write.descriptorType=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;write.pImageInfo=images;
     vkUpdateDescriptorSets(R.device,1,&write,0,nullptr);
-    if(dstX>=dst->extent.width)return;
     const uint32_t w=dst->extent.width-dstX,h=dst->extent.height;
     VkRenderingAttachmentInfo attachment{VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
     attachment.imageView=layer_view(dst,dstSlice);attachment.imageLayout=VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;

@@ -668,8 +668,8 @@ inline int rewrite_gather_rays(std::string& src, bool msl, bool twin = false) {
     if (!detail::find_varying(src, entry, 0, msl, at, centre) || !detail::find_varying(src, entry, 1, msl, at1, ray1) ||
         !detail::find_varying(src, entry, 2, msl, at2, ray2) || centre == ray1 || centre == ray2 || ray1 == ray2)
         return 0;
-    // abs: the renderers give the twins' draws a negative scale (rewrite_edge_blur)
-    const std::string scale = msl ? "abs(supportBuffer.tex0Scale)" : "abs(uf_tex0Scale)";
+    // abs: the twins' draws get a negative scale (rewrite_edge_blur); leave the game's own translation untouched
+    const std::string scale = msl ? "supportBuffer.tex0Scale" : (twin ? "abs(uf_tex0Scale)" : "uf_tex0Scale");
     const std::string fn = msl ? "wwhd_gather_ray(" : "wwhdGatherRay(";
     // the later read first, so the earlier position stays valid
     std::pair<size_t, std::string> reads[2] = {{at1, ray1}, {at2, ray2}};

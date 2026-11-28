@@ -100,17 +100,22 @@ void test_rewrite_gather_rays() {
     std::string msl = kMslSrc;
     assert(rewrite(msl, shadow, true) == 2);
     assert(msl.find("R0i = as_type<int4>(in.passParameterSem0);") != std::string::npos);
-    assert(msl.find("R1i = as_type<int4>(wwhd_gather_ray(in.passParameterSem0, in.passParameterSem1, abs(supportBuffer.tex0Scale)));") != std::string::npos);
-    assert(msl.find("R2i = as_type<int4>(wwhd_gather_ray(in.passParameterSem0, in.passParameterSem2, abs(supportBuffer.tex0Scale)));") != std::string::npos);
+    assert(msl.find("R1i = as_type<int4>(wwhd_gather_ray(in.passParameterSem0, in.passParameterSem1, supportBuffer.tex0Scale));") != std::string::npos);
+    assert(msl.find("R2i = as_type<int4>(wwhd_gather_ray(in.passParameterSem0, in.passParameterSem2, supportBuffer.tex0Scale));") != std::string::npos);
     assert(msl.find("R3i = as_type<int4>(in.passParameterSem3);") != std::string::npos);
     assert(msl.find("static float4 wwhd_gather_ray(") < msl.find("fragment FragmentOut main0"));
 
     std::string glsl = kGlslSrc;
     assert(rewrite(glsl, shadow, false) == 2);
-    assert(glsl.find("R1i = floatBitsToInt(wwhdGatherRay(passParameterSem0, passParameterSem1, abs(uf_tex0Scale)));") != std::string::npos);
-    assert(glsl.find("R2i = floatBitsToInt(wwhdGatherRay(passParameterSem0, passParameterSem2, abs(uf_tex0Scale)));") != std::string::npos);
+    assert(glsl.find("R1i = floatBitsToInt(wwhdGatherRay(passParameterSem0, passParameterSem1, uf_tex0Scale));") != std::string::npos);
+    assert(glsl.find("R2i = floatBitsToInt(wwhdGatherRay(passParameterSem0, passParameterSem2, uf_tex0Scale));") != std::string::npos);
     assert(glsl.find("layout(location = 1) in vec4 passParameterSem1;") != std::string::npos);  // declarations untouched
     assert(glsl.find("vec4 wwhdGatherRay(") < glsl.find("void main("));
+
+    std::string twin = kGlslSrc;
+    assert(rewrite(twin, shadow, false, true) == 2);
+    assert(twin.find("R1i = floatBitsToInt(wwhdGatherRay(passParameterSem0, passParameterSem1, abs(uf_tex0Scale)));") != std::string::npos);
+    assert(twin.find("R2i = floatBitsToInt(wwhdGatherRay(passParameterSem0, passParameterSem2, abs(uf_tex0Scale)));") != std::string::npos);
 
     // a shader that doesn't read its rays as expected is left alone
     std::string other = "fragment FragmentOut main0(FragmentIn in [[stage_in]]) {\nR0i = as_type<int4>(in.passParameterSem0);\n}\n";
