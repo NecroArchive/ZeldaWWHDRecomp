@@ -3,6 +3,9 @@
 // where it acts:
 //   issue #336  the map tab's chart grid takes the pause menu's focus after a scene change; the item menu then has
 //               no selection cursor (hud_gate.cpp: the grid's focus rule and the safety net that gives it back)
+//   issue #707  an early cutscene that plays after Aryll's rescue (the first Rito Aerie meeting on a save that never
+//               watched it) asks Link's second demo archive for the first one's animations and crashes; Link's cutscene
+//               lookups then take the file from the other archive (link_demo_archive.cpp)
 // Start-up / test switch: WWHD_MOD_FIX_GAME_BUGS=0 (off) or 1 (on); it wins over the saved setting.
 #include "mods.h"
 #include "runtime.h"

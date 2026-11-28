@@ -13,11 +13,11 @@
 // is, so normal play order never sees a change: the guard acts only where the game would use a resource of the wrong
 // kind. Ids that are the expected type in both archives stay with the selected one (the table cannot tell those apart).
 //
-// Not tied to "Fix original game bugs": the alternative is a crash. WWHD_LINK_DEMO_ARCHIVE=0 turns it off (the
-// game's own lookup, crash included), for comparisons.
+// Part of "Fix original game bugs" (game_fixes.cpp; on by default), asked at each lookup so a change applies at once.
+// Off, every lookup keeps the game's own answer, as the original game (crash included). WWHD_MOD_FIX_GAME_BUGS=0/1 for
+// a run.
 #include "mods/link_demo_archive.h"
 
-#include <cstdlib>
 #include <mutex>
 #include <set>
 #include <string>
@@ -25,16 +25,13 @@
 
 #include "game_hooks.h"
 #include "guest_addr.h"
+#include "mods/mods.h"
 #include "runtime.h"
 
 extern "C" void f_026067F4_orig(Cpu* c);  // dRes_control_c::getIDRes(control, archive SafeString*, id)
 
 namespace mods::link_demo_archive {
 namespace {
-const bool g_on = [] {
-    const char* e = std::getenv("WWHD_LINK_DEMO_ARCHIVE");
-    return !e || std::atoi(e) != 0;
-}();
 const uint32_t kIdTable = GD(0x100DE8F4), kIdTableCount = GD(0x100C45C0);  // archive CRC32 -> {names, count}
 const uint32_t kLkD00 = GD(0x10052828), kLkD01 = GD(0x10052830);         // the game's "LkD00" / "LkD01" strings
 constexpr uint32_t kAnmUnder0 = 0x57FC;  // daPy_lk_c::mAnmRatioUnder[0].mpAnmTransform (dProcTool: setSeAnime's anm)
@@ -105,7 +102,7 @@ extern "C" void hook_026067F4(Cpu* c) {
     using namespace mods::link_demo_archive;
     const uint32_t lr = c->lr, control = c->r[3], key = c->r[4], id = c->r[5];
     f_026067F4_orig(c);
-    if (!g_on) return;
+    if (!mods::fix_game_bugs()) return;  // off: the original game's lookup
     const int32_t expected = expected_type(lr);
     if (expected == kMissing || !key) return;
     const std::string archive = cstr(ld32(key));
@@ -121,7 +118,7 @@ extern "C" void hook_026067F4(Cpu* c) {
     const uint32_t link = expected == kBck ? game_hooks::link() : 0;
     const uint32_t current = link ? ld32(link + kAnmUnder0) : 0;
     const char* what = expected == kBck ? "animation" : expected == kBtp ? "texture pattern" : "texture scroll";
-    switch (pick(expected, here, Answer{type_other, usable(expected, alt)}, usable(kBck, current))) {
+    switch (pick(true, expected, here, Answer{type_other, usable(expected, alt)}, usable(kBck, current))) {
         case Pick::kOther:
             c->r[3] = alt;
             note(what, archive, id, name_here, std::string(other), "using " + std::string(other) + "'s " + name_other);

@@ -45,9 +45,10 @@ enum class Pick {
 
 // The cutscene asked for `expected` from the selected archive (`here`); `other` is the other archive's answer for the
 // same number. An answer that fits is never replaced, so normal play is unchanged. `current_usable`: Link's current
-// bone animation can stand in (only asked for kBck).
-inline Pick pick(int32_t expected, Answer here, Answer other, bool current_usable) {
-    if (here.type == expected && here.usable) return Pick::kKeep;
+// bone animation can stand in (only asked for kBck). `fix_on`: the "Fix original game bugs" setting; off, the game's
+// own answer always stays (the original game, crash included).
+inline Pick pick(bool fix_on, int32_t expected, Answer here, Answer other, bool current_usable) {
+    if (!fix_on || (here.type == expected && here.usable)) return Pick::kKeep;
     if (other.type == expected && other.usable) return Pick::kOther;
     if (expected == kBck && current_usable) return Pick::kCurrent;
     return Pick::kKeep;
