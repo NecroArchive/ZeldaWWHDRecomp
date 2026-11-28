@@ -20,6 +20,14 @@ what is on `devel` and not released yet (also in the
 
 ### New
 
+- **Every randomizer setting in the game: Settings › Randomizer › Customize...** (computers). Next to the presets,
+  **Customize...** shows all the settings of a new randomized game on the setup window's six pages (where items can
+  be, dungeons, entrances, hints, starting items, convenience), with the mouse, the keyboard or a controller. A preset
+  fills them, any change shows "custom", the entrance randomizer is summed up above the pages, and the permalink
+  under them is the randomizer's own for those settings; pasting a permalink fills them. **Make this game** makes the
+  game from exactly those settings through the same background job as a pasted permalink. The release's randomizer
+  keeps them (in the data folder's `randomizer/game-settings`, kept for the next start). Android keeps the presets
+  and the pasted permalink.
 - **Automatic picture-in-picture: Song list while conducting: Show / Hide** (#694, thanks @Outlander87). With
   **Display › GamePad screen** set to Automatic, the Wind Waker's song list used to open picture-in-picture while
   Link conducts, which can cover the main picture at large sizes. The new option **Song list while conducting**
@@ -117,6 +125,13 @@ what is on `devel` and not released yet (also in the
 
 ### Fixed
 
+- **Setup window, Randomized games › New game: every setting can be changed.** *Path hints* could not be set (the
+  randomizer's own name table spells it "Path ints"), and choosing *Swordless* made the settings unreadable until
+  they were reset (the starting sword stayed in the starting items, which the randomizer refuses with Swordless:
+  the sword and the Hurricane Spin are now taken out, as the PC randomizer does). *Required bosses' items*, *Outset
+  pig colour* and *First-person camera* never showed (no name, or another spelling, in the randomizer's table), and
+  *Start with a random item-sliding item* was missing; all of them show now. Only race mode (no spoiler log) stays
+  out: the port refuses it.
 - **PC-mode GameCube adapters work on the Mac with their real layout** (#556, thanks @zeldafan2000). macOS describes
   these adapters (Mayflash-style, USB ID 0079 1843/1844/1846, "GameCube Controller Adapter") only as a generic
   controller, and the game read that description: the C-stick ran backwards, the control stick moved Link at a crawl

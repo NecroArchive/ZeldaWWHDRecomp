@@ -25,8 +25,8 @@ and `last.json`.
 | Command | What it does |
 |---|---|
 | `version` | `1.2.0` |
-| `settings` | every plain setting by its randomizer name: its value index, kind (bool, count, choice), range and choice names as the PC randomizer's window offers them; the seed and the permalink |
-| `get NAME`, `set NAME INDEX` | one setting (names as in `options.cpp`, e.g. `Progress Dungeons`); values outside that range are refused |
+| `settings` | every plain setting by its randomizer name: its value index, kind (bool, count, choice), range and choice names as the PC randomizer's window offers them, and whether it is in the permalink (`in_permalink`; the others are preferences: camera, HUD, ...); the seed, the permalink and the preset the settings are (`preset`, "" for custom; preferences don't count) |
+| `get NAME`, `set NAME INDEX` | one setting, by the names `settings` gives (options.cpp's `settingToName`, plus `Required Boss Items` and `Pig Color`, which its tables can't round-trip; `PigColor` is accepted too); values outside that range are refused. Swordless (`Remove Swords` 1) also takes the sword and the Hurricane Spin out of the starting items, as the PC randomizer's window does (the randomizer refuses to read such settings back otherwise) |
 | `seed`, `set-seed TEXT`, `new-seed` | the seed name |
 | `defaults`, `preset beginner\|standard\|everything` | the randomizer's defaults, optionally with a few changes; the seed name stays |
 | `permalink`, `load-permalink TEXT` | the same permalink as the PC randomizer 1.2.0 |

@@ -2441,6 +2441,13 @@ if(Python3_Interpreter_FOUND)
   add_test(NAME randomizer_job COMMAND randomizer_job_test "${Python3_EXECUTABLE}")
 endif()
 
+add_executable(randomizer_settings_model_test runtime/tools/randomizer_settings_model_test.cpp
+               runtime/src/mods/randomizer_settings_model.cpp runtime/src/mods/code_mods.cpp)
+target_include_directories(randomizer_settings_model_test PRIVATE runtime/include runtime/src)
+target_compile_options(randomizer_settings_model_test PRIVATE -UNDEBUG)
+target_link_libraries(randomizer_settings_model_test PRIVATE Threads::Threads)
+add_test(NAME randomizer_settings_model COMMAND randomizer_settings_model_test)
+
 add_executable(android_display_rate_test runtime/tools/android_display_rate_test.cpp)
 target_include_directories(android_display_rate_test PRIVATE runtime/src)
 target_compile_options(android_display_rate_test PRIVATE -UNDEBUG)

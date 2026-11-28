@@ -14,8 +14,18 @@ In the game, open **Settings > Randomizer** (Esc opens Settings on a computer):
 - **New randomized game**: choose **Beginner**, **Standard** or **Everything** (**Settings for a
   new game**: they apply to the game made next, not to the one you play), type a seed name (or leave
   it empty for a new random one), or paste a **Permalink** instead: it brings all its settings
-  (entrance randomizer included) and its seed, and the preset is not used. Every setting can be
-  chosen in the setup window (**Randomized games › New game**; see [In the setup window](#in-the-setup-window)).
+  (entrance randomizer included) and its seed, and the preset is not used.
+- **Customize...** (on a computer) shows every setting, on the same six pages as the setup window
+  (where items can be, dungeons, entrances, hints, starting items, convenience): checkboxes, sliders
+  and lists, with the mouse, the keyboard or a controller. A preset fills them all; any change makes
+  them "custom"; the entrance randomizer is summed up above the pages. **Permalink of these
+  settings** is the randomizer's own permalink of them (**Copy this permalink**), and a permalink
+  pasted there with **Use this permalink** fills the settings and the seed name. **New seed** picks a
+  new seed name. The settings are kept for the next start (in `randomizer/game-settings` of the data
+  folder: the game's own, separate from the setup window's). Settings marked "yours: not in the
+  permalink" (camera, HUD and the like) are your preferences: they don't change the game a permalink
+  makes. **Presets only** goes back to the presets. On Android the presets and a pasted permalink
+  stay the choices; the setup window has every setting too (see [In the setup window](#in-the-setup-window)).
 - **Make this game**: setup makes it from your installed game in the background while you keep
   playing, checks it and builds it. The page shows what it is doing; **Cancel** stops it (on a
   computer). If it can't be made, the page says why; the game you play stays as it is.

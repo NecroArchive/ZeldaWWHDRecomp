@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 // The randomizer's settings as the player sees them: the six pages of settings by the randomizer's own names
 // (tools/rando/twwhd_rando/options.cpp nameToSetting, the names wwhd-rando's settings command gives) with the port's
-// labels, shared by the setup window (tools/installer/gui/setup_gui.cpp, Randomized games > New game) and the game's
+// labels (every plain setting but No Spoiler Log: race mode, which the port refuses), shared by the setup window (tools/installer/gui/setup_gui.cpp, Randomized games > New game) and the game's
 // Settings > Randomizer (overlay/randomizer_tab.cpp); and the short summary of a seed's settings that page shows,
 // from the description setup keeps per seed (tools/installer/randomizer_seeds.py describe_settings: the preset the
 // settings are, or the closest preset and what differs from it, and every setting's value).
@@ -60,13 +60,14 @@ inline constexpr Row kStart[] = {
     {"Starting Golden Feathers", "Golden feathers"}, {"Starting Knights Crests", "Knight's crests"},
     {"Starting Red Chu Jellys", "Red Chu jellies"}, {"Starting Green Chu Jellys", "Green Chu jellies"},
     {"Starting Blue Chu Jellys", "Blue Chu jellies"}, {"Start With Random Item", "Start with a random item"},
+    {"Start With Random Item Sliding Item", "Start with a random item-sliding item (Boomerang, bow or a hook)"},
 };
 inline constexpr Row kConvenience[] = {
     {"Instant Text", "Instant text boxes"}, {"Reveal Sea Chart", "Reveal the full sea chart"},
     {"Quiet Swift Sail", "Quiet Swift Sail"}, {"Add Shortcut Warps", "Warps between dungeons"}, {"Fix RNG", "Fixed RNG"},
     {"Performance", "Performance"}, {"Invert Compass", "Invert the sea compass"}, {"Remove Music", "Remove music"},
     {"Classic Mode", "Classic mode"}, {"Pig Color", "Outset pig colour"}, {"Target Type", "Targeting"},
-    {"Camera", "Camera"}, {"First Person Camera", "First-person camera"}, {"Gyroscope", "Gyroscope"}, {"UI Display", "HUD"},
+    {"Camera", "Camera"}, {"First-Person Camera", "First-person camera"}, {"Gyroscope", "Gyroscope"}, {"UI Display", "HUD"},
 };
 
 struct Page {

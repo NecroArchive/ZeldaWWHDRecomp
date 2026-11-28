@@ -7,6 +7,7 @@ The game-file checks (the output against the official TWWHD Randomizer 1.2.0, se
 outside CI; see tools/rando/README.md.
 """
 import json
+import re
 import subprocess
 import sys
 import tempfile
@@ -77,6 +78,73 @@ class RandoCli(unittest.TestCase):
         self.cli('set', 'No such setting', '1', ok=False)
         self.cli('set', 'Starting Gear', '1', ok=False)
         self.cli('set', 'Progress Mail', 'x', ok=False)
+
+    def test_names_of_the_pages(self):
+        # the six pages of the setup window and the game (runtime/src/randomizer_settings.h) name every setting by the
+        # names this command gives, and leave out only race mode (refused)
+        table = (Path(__file__).resolve().parents[2] / 'runtime/src/randomizer_settings.h').read_text()
+        names = re.findall(r'\{"([^"]+)", "[^"]*"\}', table)
+        s = self.cli('settings')['settings']
+        self.assertEqual([n for n in names if n not in s], [])
+        self.assertEqual([n for n in s if n not in names], ['No Spoiler Log'])
+        self.assertNotIn('Invalid Option', s)
+        # the two names the randomizer can't round-trip itself (cli_name / cli_option)
+        self.cli('set', 'Required Boss Items', '1')
+        self.assertEqual(self.cli('get', 'Required Boss Items')['value'], 1)
+        self.cli('set', 'Pig Color', '1')
+        self.assertEqual(self.cli('settings')['settings']['Pig Color']['value'], 1)
+        self.cli('set', 'PigColor', '2')
+        self.assertEqual(self.cli('get', 'Pig Color')['value'], 2)
+
+    def test_preferences_and_the_permalink(self):
+        # a setting the settings command marks in_permalink changes the permalink; the others (preferences) never do
+        self.cli('set-seed', 'WWHDTest')
+        s = self.cli('settings')['settings']
+        base = self.cli('permalink')['permalink']
+        for name, d in s.items():
+            if name == 'No Spoiler Log':
+                continue
+            other = d['min'] if d['value'] != d['min'] else d['max']
+            self.cli('set', name, str(other))
+            changed = self.cli('permalink')['permalink'] != base
+            self.cli('load-permalink', base)  # (back; Remove Swords also took the sword out of the starting items)
+            self.assertEqual(changed, d['in_permalink'], name)
+        self.assertEqual(self.cli('permalink')['permalink'], base)
+
+    def test_settings_to_permalink_round_trip(self):
+        # what the game's Settings > Randomizer does (set, then the randomizer's own permalink): a fresh work folder that
+        # loads that permalink has the same settings and gives the same permalink
+        self.cli('preset', 'standard')
+        self.cli('set-seed', 'RoundTrip')
+        chosen = {'Randomize Dungeon Entrances': 1, 'Randomize Boss Entrances': 1, 'Randomize Miniboss Entrances': 1,
+                  'Randomize Cave Entrances': 2, 'Randomize Door Entrances': 1, 'Randomize Misc Entrances': 1,
+                  'Mix Caves': 1, 'Decouple Entrances': 1, 'Random Start Island': 1, 'Dungeon Small Keys': 4,
+                  'Num Required Dungeons': 3, 'Required Boss Items': 1, 'Path Hints': 5, 'Starting HC': 6,
+                  'Start With Random Item Sliding Item': 1, 'Progress Mail': 1, 'Damage Multiplier': 4}
+        for name, v in chosen.items():
+            self.cli('set', name, str(v))
+        mine = self.cli('settings')
+        self.assertEqual(mine['preset'], '')
+        other = Cli(Path(self.tmp.name) / 'other')
+        other('load-permalink', mine['permalink'])
+        theirs = other('settings')
+        self.assertEqual(theirs['permalink'], mine['permalink'])
+        self.assertEqual(theirs['seed'], 'RoundTrip')
+        values = lambda r: {n: d['value'] for n, d in r['settings'].items() if d['in_permalink']}
+        self.assertEqual(values(theirs), values(mine))
+        for name, v in chosen.items():
+            self.assertEqual(theirs['settings'][name]['value'], v, name)
+
+    def test_preset_of_the_settings(self):
+        for name in ('beginner', 'everything', 'standard'):
+            self.cli('preset', name)
+            self.assertEqual(self.cli('settings')['preset'], name)
+        self.cli('set', 'Camera', '1')  # a preference: still the preset
+        self.assertEqual(self.cli('settings')['preset'], 'standard')
+        self.cli('set', 'Randomize Dungeon Entrances', '1')
+        self.assertEqual(self.cli('settings')['preset'], '')
+        self.cli('set', 'Randomize Dungeon Entrances', '0')
+        self.assertEqual(self.cli('settings')['preset'], 'standard')
 
     def test_seed_and_permalink(self):
         self.cli('set-seed', 'WWHDTest')

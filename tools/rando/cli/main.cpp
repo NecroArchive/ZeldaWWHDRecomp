@@ -133,6 +133,22 @@ bool plain_setting(Option o) {
     }
 }
 
+// The names `settings` gives and `get` / `set` take: the randomizer's own settingToName (options.cpp), except Required
+// Boss Items (no name there) and Pig Color ("PigColor" there). Looked up by those same names, not by nameToSetting,
+// which doesn't round-trip: it has "Pig Color", no Required Boss Items and "Path ints" for Path Hints, so those could
+// not be set ("PigColor" stays accepted).
+std::string cli_name(Option o) {
+    if (o == Option::RequiredBossItems) return "Required Boss Items";
+    if (o == Option::PigColor) return "Pig Color";
+    return settingToName(o);
+}
+Option cli_option(const std::string& name) {
+    if (name == "PigColor") return Option::PigColor;
+    for (int n = 1; n < (int)Option::COUNT; n++)
+        if (cli_name((Option)n) == name) return (Option)n;
+    return Option::INVALID;
+}
+
 // How a setting's value index is chosen, as the PC randomizer's window offers it (gui/desktop/mainwindow.cpp ranges)
 struct Kind {
     const char* kind;  // bool | count | choice
@@ -175,6 +191,16 @@ Kind kind_of(Option o) {
     }
 }
 
+// Whether a setting is part of the permalink (config.cpp PERMALINK_OPTIONS), seen from the permalink itself: the others
+// are the player's preferences and conveniences (camera, HUD, Invert Compass, ...), no part of the game a permalink
+// makes or of a preset
+bool in_permalink(const Config& c, Option o) {
+    Config t = c;
+    const Kind k = kind_of(o);
+    t.settings.setSetting(o, (size_t)(t.settings.getSetting(o) != k.lo ? k.lo : k.hi));
+    return t.getPermalink() != c.getPermalink();
+}
+
 // The official randomizer builds add a secret key to race-mode (no spoiler log) seeds; no other build can make the same game.
 const char* kRaceMode =
     "Race-mode settings (no spoiler log) are not supported: the official TWWHD Randomizer adds a secret key to those "
@@ -212,6 +238,21 @@ bool apply_preset(Config& c, const std::string& name) {
         return true;
     }
     return false;
+}
+
+// the preset the settings are (as far as the permalink goes, the seed aside), "" none
+std::string matching_preset(const Config& c) {
+    for (const char* name : {"standard", "beginner", "everything"}) {
+        Config p = c;
+        apply_preset(p, name);
+        bool same = true;
+        for (int n = 1; n < (int)Option::COUNT && same; n++) {
+            const Option o = (Option)n;
+            if (plain_setting(o) && in_permalink(c, o) && p.settings.getSetting(o) != c.settings.getSetting(o)) same = false;
+        }
+        if (same) return name;
+    }
+    return "";
 }
 
 std::string read_title_id(const fspath& game) {
@@ -309,7 +350,7 @@ int main(int argc, char** argv) {
     if (!load(c, err)) return fail(err);
     auto store = [&](Json j = {}) { return save(c, err) ? ok(j) : fail(err); };
     auto setting = [&](const std::string& name, Option& o) {
-        o = nameToSetting(name);
+        o = cli_option(name);
         if (!plain_setting(o)) return fail("no plain setting named " + name), false;
         return true;
     };
@@ -324,11 +365,13 @@ int main(int argc, char** argv) {
             std::string choices = "[";
             for (size_t i = 0; i < k.choices.size(); i++) choices += (i ? "," : "") + json_str(k.choices[i]);
             Json d;
-            d.i("value", c.settings.getSetting(o)).s("kind", k.kind).i("min", k.lo).i("max", k.hi).raw("choices", choices + "]");
-            r += (first ? "" : ",") + json_str(settingToName(o)) + ":" + d.str();
+            d.i("value", c.settings.getSetting(o)).s("kind", k.kind).i("min", k.lo).i("max", k.hi).raw("choices", choices + "]")
+                .b("in_permalink", in_permalink(c, o));
+            r += (first ? "" : ",") + json_str(cli_name(o)) + ":" + d.str();
             first = false;
         }
-        return ok(Json().raw("settings", r + "}").s("seed", c.seed).s("permalink", c.getPermalink()));
+        return ok(Json().raw("settings", r + "}").s("seed", c.seed).s("permalink", c.getPermalink())
+                      .s("preset", matching_preset(c)));
     }
     if (cmd == "get" && args.size() == 2) {
         Option o;
@@ -344,6 +387,10 @@ int main(int argc, char** argv) {
         if (!end || *end || v < k.lo || v > k.hi)
             return fail("not a value of " + args[1] + ": " + args[2] + " (" + std::to_string(k.lo) + ".." + std::to_string(k.hi) + ")");
         c.settings.setSetting(o, (size_t)v);
+        // swordless: no swords in the starting items either (the randomizer refuses to read such settings back, as
+        // the PC randomizer's window takes them out when Remove Swords is chosen)
+        if (o == Option::RemoveSwords && v)
+            std::erase_if(c.settings.starting_gear, [](GameItem i) { return i == GameItem::ProgressiveSword || i == GameItem::HurricaneSpin; });
         return store(Json().s("name", args[1]).i("value", c.settings.getSetting(o)));
     }
     if (cmd == "seed") return ok(Json().s("seed", c.seed));

@@ -11,6 +11,7 @@
 #include "../mods/code_mods_io.h"
 #include "../mods/mod_json.h"
 #include "../mods/randomizer_job.h"
+#include "../mods/randomizer_settings_model.h"
 #include "../randomizer_identity.h"
 #include "../randomizer_settings.h"
 #include "../randomizer_spoiler.h"
@@ -89,6 +90,11 @@ struct Form {
     int preset = 1;  // beginner, standard, everything
     char seed[128] = "", permalink[512] = "";
     bool seen_ready = false;
+    bool customize = false;  // every setting shown (desktop: rando_model)
+    bool customized = false; // the model was loaded once (its settings are kept from one start to the next)
+    int page = 0;            // rando_settings::kPages
+    std::map<std::string, int> sliding;  // a slider being moved: sent when it is let go
+    std::string model_seed;              // the randomizer's seed name last shown in the seed field
 } F;
 // a start that was refused, a restart that failed: set on the main thread too (folder chooser, restart)
 std::mutex g_message_mutex;
@@ -190,6 +196,80 @@ void test_restart(const randomizer_job::Status& job) {
     restart_into_new_game();
 }
 
+#ifndef __ANDROID__
+// one setting of a page: a checkbox, a slider or a list, as the setup window's (setup_gui.cpp rando_rows); a change
+// goes to the randomizer (a slider's when it is let go: mouse, or the controller's activate / back)
+void setting_row(const rando_settings::Row& row, const rando_model::Setting& s) {
+    ImGui::PushID(row.name);
+    const float width = ImGui::GetFontSize() * 14.0f;
+    if (s.kind == "bool") {
+        bool v = s.value != 0;
+        if (ImGui::Checkbox(row.label, &v)) rando_model::set(s.name, v ? 1 : 0);
+    } else if (s.kind == "count") {
+        auto it = F.sliding.find(s.name);
+        int v = it != F.sliding.end() ? it->second : s.value;
+        ImGui::SetNextItemWidth(width);
+        if (ImGui::SliderInt(row.label, &v, s.lo, s.hi, "%d", ImGuiSliderFlags_AlwaysClamp)) F.sliding[s.name] = v;
+        if (ImGui::IsItemDeactivated() && F.sliding.count(s.name)) {
+            if (F.sliding[s.name] != s.value) rando_model::set(s.name, F.sliding[s.name]);
+            F.sliding.erase(s.name);
+        }
+    } else {
+        ImGui::SetNextItemWidth(width);
+        const char* now = s.value >= 0 && s.value < int(s.choices.size()) ? s.choices[s.value].c_str() : "?";
+        if (ImGui::BeginCombo(row.label, now)) {
+            for (int k = 0; k < int(s.choices.size()); k++) {
+                const bool selected = k == s.value;
+                if (overlay::widgets::selectable(s.choices[k].c_str(), selected) && !selected) rando_model::set(s.name, k);
+                if (selected) ImGui::SetItemDefaultFocus();
+            }
+            ImGui::EndCombo();
+        }
+    }
+    if (!s.in_permalink) {
+        ImGui::SameLine();
+        overlay::widgets::note("(yours: not in the permalink)");
+    }
+    ImGui::PopID();
+}
+
+// every setting of the next game, on the setup window's six pages
+void draw_customize(const rando_model::State& m) {
+    if (!m.loaded) {
+        overlay::widgets::note("%s", m.error.empty() ? "Reading the randomizer's settings..." : m.error.c_str());
+        return;
+    }
+    if (m.preset.empty()) ImGui::TextUnformatted("These settings: custom");
+    else ImGui::Text("These settings: %s (the preset)", rando_settings::preset_label(m.preset).c_str());
+    ImGui::SameLine();
+    overlay::widgets::note("%s", m.busy ? "(updating...)" : "");
+    ImGui::TextWrapped("Entrances: %s", [&] {
+        std::map<std::string, int> values;
+        for (const auto& x : m.settings) values[x.name] = x.value;
+        return rando_settings::entrances(values);
+    }().c_str());
+    for (int i = 0; i < int(std::size(rando_settings::kPages)); i++) {
+        if (i) ImGui::SameLine();
+        if (overlay::widgets::radio(rando_settings::kPages[i].title, F.page == i)) F.page = i;
+    }
+    ImGui::Separator();
+    const auto& page = rando_settings::kPages[F.page];
+    for (size_t i = 0; i < page.count; i++)
+        if (const rando_model::Setting* x = m.find(page.rows[i].name)) setting_row(page.rows[i], *x);
+    ImGui::Separator();
+    ImGui::TextWrapped("Permalink of these settings: %s", m.permalink.c_str());
+    if (ImGui::Button("Copy this permalink")) {
+        const std::string link = m.permalink;
+        hostui::post([link] { hostui::set_clipboard(link); });
+    }
+    if (!m.error.empty()) {
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.55f, 0.45f, 1.0f));
+        ImGui::TextWrapped("The randomizer refused: %s", m.error.c_str());
+        ImGui::PopStyleColor();
+    }
+}
+#endif
+
 // New randomized game / Import seed...: the form, the job's progress, its end
 void draw_new_game() {
     ImGui::SeparatorText("New randomized game");
@@ -259,15 +339,80 @@ void draw_new_game() {
         return;
     }
     // (for the next game only: this game's own settings are its permalink's, shown above)
+#ifndef __ANDROID__
+    const rando_model::State m = F.customize ? rando_model::state() : rando_model::State{};
+    const bool custom = F.customize, ready = !custom || m.loaded;
+#else
+    constexpr bool custom = false, ready = true;
+#endif
     ImGui::TextUnformatted("Settings for a new game");
     for (int i = 0; i < 3; i++) {
         ImGui::SameLine();
+#ifndef __ANDROID__
+        if (custom) {  // a preset fills every setting
+            if (overlay::widgets::radio(kPresetLabels[i], m.preset == kPresets[i], m.loaded)) F.preset = i, rando_model::preset(kPresets[i]);
+            continue;
+        }
+#endif
         if (overlay::widgets::radio(kPresetLabels[i], F.preset == i)) F.preset = i;
     }
+#ifndef __ANDROID__
+    ImGui::SameLine();
+    if (!custom && ImGui::Button("Customize...")) {
+        F.customize = true;
+        if (!F.customized) rando_model::load();  // (the settings chosen last time, kept by the randomizer)
+        F.customized = true;
+        if (F.permalink[0]) rando_model::load_permalink(F.permalink), F.permalink[0] = 0;
+        else if (F.seed[0]) rando_model::set_seed(F.seed);  // (the seed name typed already)
+    } else if (custom && ImGui::Button("Presets only")) {
+        F.customize = false;
+    }
+    overlay::widgets::help(custom ? "Back to a preset and a seed name (the settings chosen here stay for next time)."
+                                  : "Every setting, on the setup window's six pages: where items can be, dungeons, "
+                                    "entrances, hints, starting items, convenience.");
+    if (custom) draw_customize(m);
+#endif
+#ifndef __ANDROID__
+    // the seed name the settings have (a pasted permalink's, say) shows in the field
+    if (custom && m.loaded && m.seed != F.model_seed) {
+        F.model_seed = m.seed;
+        snprintf(F.seed, sizeof F.seed, "%s", m.seed.c_str());
+    }
+#endif
     text_entry::field("Seed name", F.seed, sizeof F.seed, 0, "empty: a new random one");
+#ifndef __ANDROID__
+    if (custom) {
+        ImGui::SameLine();
+        if (ImGui::Button("New seed")) rando_model::new_seed();
+        // a pasted permalink fills the settings (and the seed name)
+        const bool use = text_entry::field("Permalink", F.permalink, sizeof F.permalink, ImGuiInputTextFlags_EnterReturnsTrue,
+                                           "paste one: it fills the settings and the seed");
+        ImGui::SameLine();
+        if ((ImGui::Button("Use this permalink") || use) && F.permalink[0]) {
+            rando_model::load_permalink(F.permalink);
+            F.permalink[0] = 0;
+        }
+    } else
+#endif
     text_entry::field("Permalink", F.permalink, sizeof F.permalink, 0, "or paste one: its settings and seed");
-    const bool permalink = F.permalink[0] != 0;
-    if (ImGui::Button("Make this game")) {
+    const bool permalink = F.permalink[0] != 0 && !custom;
+    ImGui::BeginDisabled(!ready);
+    const bool make = ImGui::Button("Make this game");
+    ImGui::EndDisabled();
+    if (make && custom) {
+#ifndef __ANDROID__
+        // these settings with the seed name (or a new random one), then the randomizer's permalink of them: the same
+        // job a pasted permalink starts
+        if (!F.seed[0]) rando_model::new_seed();
+        else if (F.seed != m.seed) rando_model::set_seed(F.seed);
+        rando_model::then([](const rando_model::State& st) {
+            if (!st.error.empty() || st.permalink.empty()) return set_message("Not made: " + (st.error.empty() ? std::string("no permalink") : st.error));
+            randomizer_job::Request r;
+            r.permalink = st.permalink;
+            start_job(r);
+        });
+#endif
+    } else if (make) {
         randomizer_job::Request r;
         if (permalink) r.permalink = F.permalink;
         else r.preset = kPresets[F.preset], r.seed = F.seed;
@@ -281,14 +426,15 @@ void draw_new_game() {
     overlay::widgets::note("%s Setup makes it from your installed game while you play, checks it and builds it; the "
                            "next start plays it. Each randomized game has its own saves and save states; your normal save is never "
                            "touched.",
-                           permalink ? "The permalink's settings (all of them: the preset above is not used) and seed."
-                                     : "A preset and a seed name.");
+                           custom      ? "These settings and the seed name."
+                           : permalink ? "The permalink's settings (all of them: the preset above is not used) and seed."
+                                       : "A preset and a seed name.");
 #ifdef __ANDROID__
     overlay::widgets::note("A pasted permalink brings all its settings, entrance randomizer included.");
 #else
-    overlay::widgets::note("A pasted permalink brings all its settings, entrance randomizer included. Every setting can "
-                           "be chosen in the setup window (hold Shift while starting Wind Waker HD on Windows and macOS, "
-                           "or start it with --setup): Randomized games (TWWHD Randomizer)..., New game.");
+    overlay::widgets::note("A pasted permalink brings all its settings, entrance randomizer included. Customize... shows "
+                           "every setting here; the setup window has them too (hold Shift while starting Wind Waker HD on "
+                           "Windows and macOS, or start it with --setup): Randomized games (TWWHD Randomizer)..., New game.");
 #endif
 }
 
@@ -455,6 +601,17 @@ void draw() {
         test_aid();
         // test aid: WWHD_TEST_RANDOMIZER_SPOILER=<square> opens this game's spoiler log on its map with that square
         // chosen (0: none), without the question
+#ifndef __ANDROID__
+        // test aid: WWHD_TEST_RANDOMIZER_CUSTOMIZE=<page 0-5>[:<permalink>] shows every setting on that page (with that
+        // permalink's settings)
+        if (const char* t = std::getenv("WWHD_TEST_RANDOMIZER_CUSTOMIZE"); t && std::getenv("WWHD_NO_HOST_INPUT") && !F.customized) {
+            const std::string spec = t;
+            F.customize = F.customized = true;
+            F.page = std::clamp(std::atoi(spec.c_str()), 0, int(std::size(rando_settings::kPages)) - 1);
+            rando_model::load();
+            if (const auto colon = spec.find(':'); colon != std::string::npos) rando_model::load_permalink(spec.substr(colon + 1));
+        }
+#endif
         if (const char* t = std::getenv("WWHD_TEST_RANDOMIZER_SPOILER"); t && this_seed()) {
             S.spoilers_shown = true;
             load_spoilers(*this_seed());
