@@ -6,7 +6,8 @@ game code (a code_mods variant: switching between the game as it is and the seed
 game reads at its next start, no build when the variant is cached):
 
   <data>/randomizer/settings/       the randomizer's settings for the next seed (config.yaml, preferences.yaml)
-  <data>/randomizer/seeds.json      the seeds made: id, seed hash words, permalink, RPX SHA-256, ...
+  <data>/randomizer/seeds.json      the seeds made: id, seed hash words, permalink, RPX SHA-256, the settings
+                                    against the presets (describe_settings), ...
   <data>/randomizer/seeds/<id>/     one seed: its settings, logs (spoiler log), last.json, out/ (changed files)
   <data>/randomizer/places.tsv      the spoiler map's places, from the player's own stage files (places.py)
 
@@ -22,6 +23,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -217,6 +219,69 @@ def configure(setup, data_dir, preset=None, permalink=None, settings_file=None, 
     return call(setup, work, "permalink")["permalink"]
 
 
+def value_text(s):
+    """a setting's value as the randomizer's settings command describes it, for the player"""
+    v = s.get("value", 0)
+    if s.get("kind") == "bool":
+        return "on" if v else "off"
+    choices = s.get("choices") or []
+    if s.get("kind") == "choice" and 0 <= v < len(choices):
+        return choices[v]
+    return str(v)
+
+
+def describe_settings(setup, work, scratch):
+    """the settings of the config.yaml in `work` (a seed's own folder: the settings it was made with) against the
+    presets, as the randomizer itself reads them (its settings and preset commands, on copies in `scratch`):
+    {"preset": the preset they are ("" none), "closest": the preset with the fewest differences, "changed":
+    [[name, value text], ...] where they differ from "closest", "values": {name: value index}}. Shown by the game's
+    Settings > Randomizer (randomizer_tab.cpp), so a game made from a permalink says what its settings are."""
+    def settings(preset=None):
+        w = Path(tempfile.mkdtemp(dir=str(scratch)))
+        for f in ("config.yaml", "preferences.yaml"):
+            if (Path(work) / f).is_file():
+                shutil.copyfile(Path(work) / f, w / f)
+        if preset:
+            call(setup, w, "preset", preset, log=False)
+        return call(setup, w, "settings", log=False)["settings"]
+    Path(scratch).mkdir(parents=True, exist_ok=True)
+    now = settings()
+    best = None
+    for p in ("standard", "beginner", "everything"):  # (a tie: the first)
+        ref = settings(p)
+        diff = [n for n in now if n in ref and ref[n].get("value") != now[n].get("value")]
+        if best is None or len(diff) < len(best[1]):
+            best = (p, diff)
+    return {"preset": "" if best[1] else best[0], "closest": best[0],
+            "changed": [[n, value_text(now[n])] for n in best[1]],
+            "values": {n: now[n].get("value", 0) for n in now}}
+
+
+def describe_missing(setup, data_dir):
+    """adds describe_settings to the seeds made before it existed (not imported ones: they have no settings of
+    their own); a seed whose settings can't be read gets an empty description, so it is not tried again"""
+    reg = load(data_dir)
+    todo = [s for s in reg["seeds"] if "settings" not in s and not s.get("imported")]
+    if not todo:
+        return
+    scratch = rando_dir(data_dir) / (".describe-%d" % os.getpid())
+    try:
+        for s in todo:
+            d = seed_dir(data_dir, s["id"])
+            try:
+                s["settings"] = describe_settings(setup, d, scratch) if (d / "config.yaml").is_file() else {}
+            except setup.SetupError:
+                s["settings"] = {}
+    finally:
+        shutil.rmtree(str(scratch), ignore_errors=True)
+    fresh = load(data_dir)
+    known = {s["id"]: s["settings"] for s in todo}
+    for s in fresh["seeds"]:
+        if s["id"] in known and "settings" not in s:
+            s["settings"] = known[s["id"]]
+    save(data_dir, fresh)
+
+
 def make(setup, ctx, say=print, preset=None, permalink=None, settings_file=None, seed=None, new_seed=False):
     """a new randomized game from the installed game; returns its registry entry (not built yet)"""
     check_base(setup, ctx)
@@ -267,7 +332,12 @@ def make(setup, ctx, say=print, preset=None, permalink=None, settings_file=None,
         say("  Randomized game %s (%s) made in %d s; %d unchanged files left out (%d MB)." % (
             seed_id, entry["hash"], time.time() - t0, n, size >> 20))
         ensure_places(setup, data_dir, ctx.game_dir)
-        return entry
+        # what its settings are (and those of seeds made before the description existed), for the game's page
+        try:
+            describe_missing(setup, data_dir)
+        except (setup.SetupError, OSError, ValueError) as e:
+            say("  (the settings summary of the randomized games was not written: %s)" % e)
+        return next((s for s in load(data_dir)["seeds"] if s["id"] == seed_id), entry)
     finally:
         if tmp is not None and tmp.exists():
             shutil.rmtree(setup.longpath(str(tmp)), ignore_errors=True)  # (made by this run, failed)

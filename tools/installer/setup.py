@@ -4614,8 +4614,13 @@ def gui_main(args):
         return None
 
     def do_rando_state(req):
+        import randomizer_seeds
         if rando_guard(req):
             return
+        try:  # the settings summary the game's Settings > Randomizer shows, for seeds made before it existed
+            randomizer_seeds.describe_missing(sys.modules[__name__], ctx.data_dir)
+        except (SetupError, OSError, ValueError):
+            pass
         rando_reply(req)
 
     def do_rando_change(req):
