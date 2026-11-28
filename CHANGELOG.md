@@ -123,8 +123,7 @@ what is on `devel` and not released yet (also in the
   thanks @radialmonster). The game's animation helper for this object takes one more value than the decomp version
   gave it: a second model to animate, which the trapdoor doesn't have (the original passes none). The decomp version
   left that value as whatever was in memory there, so when the trapdoor changed its animation it could also animate
-  some other actor's model, or crash. Setup's model preparation hit this on Windows right after showing the fishman
-  (`NpcSo`): an access violation, and `Nzfall:FFFFFFFF:0:0` was skipped. It now passes "none", as the original
+  some other actor's model, or crash. Setup's model preparation hit this on Windows right after the `NpcSo` actors: an access violation, and `Nzfall:FFFFFFFF:0:0` was skipped. It now passes "none", as the original
   does. The trapdoor in Windfall's jail (`Pnezumi`, where Tingle is held) runs the same code in play. The
   recompiled (standard) version was not affected.
 - **Setup's model preparation no longer skips `Vtil:vtil1.bdl` or another object's model** (#703, thanks
