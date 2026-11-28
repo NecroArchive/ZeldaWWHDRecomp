@@ -104,3 +104,6 @@
 # (issue #336; mods/hud_gate.cpp, rule in mods/menu_cursor.h)
 026828B4  # hdSeaChartGrid_c::transferPendingFocus
 @02682930 # transferPendingFocus: setModeDefault(sEventMgr, Link's square's element)
+# Link's cutscene animations from the right one of his demo archives LkD00 / LkD01 (issue #707;
+# mods/link_demo_archive.cpp): an early cutscene played after event bit 0x2D01 asks LkD01 for LkD00's numbers
+026067F4  # dRes_control_c::getIDRes: dProcTool / texture loaders' lookups checked against the id table

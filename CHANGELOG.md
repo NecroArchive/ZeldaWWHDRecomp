@@ -108,6 +108,15 @@ what is on `devel` and not released yet (also in the
 
 ### Fixed
 
+- **No crash in the Rito Aerie cutscene on Dragon Roost Island late in the story** (#707, thanks
+  @leonardobailon64). Link's cutscene animations are in two archives, and the game switches to the second for good
+  once Aryll is rescued in the Forsaken Fortress. On a save where the first meeting in the Rito Aerie (Quill bringing
+  Link to the chieftain) was never finished, that early cutscene plays again after the rescue and asks the second
+  archive for the first one's animations: it got a texture animation instead and crashed in the middle of the
+  cutscene, with every setting and renderer (the original game has the same code). Link's cutscene lookups now take
+  the animation from the other archive when the selected one has a different kind of file under that number, so the
+  cutscene plays with Link's right animations; normal play order is unchanged. `WWHD_LINK_DEMO_ARCHIVE=0` turns this
+  off.
 - **PC-mode GameCube adapters work on the Mac with their real layout** (#556, thanks @zeldafan2000). macOS describes
   these adapters (Mayflash-style, USB ID 0079 1843/1844/1846, "GameCube Controller Adapter") only as a generic
   controller, and the game read that description: the C-stick ran backwards, the control stick moved Link at a crawl
