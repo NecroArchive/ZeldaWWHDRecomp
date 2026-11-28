@@ -272,6 +272,8 @@ bool camera_zoom_held();           // the zoom button is held now (Look up and d
 void camera_zoom_used();           // camera.cpp: the camera zoomed through it (no page turn on L's release)
 int wheel_zoom_smoothing();        // Mouse wheel: Zoom's ease (#696): mouse_wheel::Smoothing (0 Off .. 4; 2 default)
 void set_wheel_zoom_smoothing(int choice);
+int wheel_zoom_style();            // Mouse wheel: Zoom's style (#696): mouse_wheel::Style (0 Original, 1 Distance only, default)
+void set_wheel_zoom_style(int choice);
 bool aim_left_stick();             // First-person aiming: false Right stick (HD, default), true Left stick (classic) (#666)
 void set_aim_left_stick(bool left);
 // the Switch first-person aiming shortcut (input_map::kAimStick): flips and saves the choice, as Controls ›

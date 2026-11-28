@@ -39,6 +39,9 @@ int mouse_wheel_mode() { return wheelMode; }
 int wheelSmooth = 2;  // 0.3 s, the default
 int wheel_zoom_smoothing() { return wheelSmooth; }
 void set_wheel_zoom_smoothing(int c) { wheelSmooth = c; }
+int wheelStyle = 1;  // Distance only, the default
+int wheel_zoom_style() { return wheelStyle; }
+void set_wheel_zoom_style(int c) { wheelStyle = c; }
 void set_aim_left_stick(bool left) { aimLeft = left; }
 }
 namespace game_settings {
@@ -224,12 +227,25 @@ int main() {
         assert(mods::wheelSmooth==0);
         mods::wheelSmooth=4;[g_controls syncOptions];assert(g_controls.wheelSmoothing.indexOfSelectedItem==4);
         mods::wheelSmooth=2;[g_controls syncOptions];
+        // Wheel zoom: Distance only by default, only active with Zoom, next to the Mouse wheel popup; the row fits
+        assert(g_controls.wheelZoomStyle.numberOfItems==2 && g_controls.wheelZoomStyle.indexOfSelectedItem==1 &&
+               g_controls.wheelZoomStyle.enabled && [[g_controls.wheelZoomStyle itemTitleAtIndex:0] isEqualToString:@"Original"] &&
+               [[g_controls.wheelZoomStyle itemTitleAtIndex:1] isEqualToString:@"Distance only"]);
+        [g_controls.wheelZoomStyle selectItemAtIndex:0];[g_controls wheelZoomStyleChanged:g_controls.wheelZoomStyle];
+        assert(mods::wheelStyle==0);
+        mods::wheelStyle=1;[g_controls syncOptions];assert(g_controls.wheelZoomStyle.indexOfSelectedItem==1);
+        {
+            NSView* row = g_controls.wheelZoomStyle.superview;
+            [row.window layoutIfNeeded];
+            assert(row && NSMaxX(row.frame) <= NSWidth(row.window.contentView.bounds) - 16 + 0.5);
+        }
         mods::manager::wheelLocked=true;
         [g_controls.mouseWheel selectItemAtIndex:0];[g_controls mouseWheelChanged:g_controls.mouseWheel];
         assert(mods::wheelMode==1 && g_controls.mouseWheel.indexOfSelectedItem==1);
         mods::manager::wheelLocked=false;
         mods::wheelMode=0;[g_controls syncOptions];assert(g_controls.mouseWheel.indexOfSelectedItem==0);
-        mods::wheelMode=2;[g_controls syncOptions];assert(g_controls.mouseWheel.indexOfSelectedItem==2 && !g_controls.wheelSmoothing.enabled);
+        mods::wheelMode=2;[g_controls syncOptions];assert(g_controls.mouseWheel.indexOfSelectedItem==2 && !g_controls.wheelSmoothing.enabled &&
+                                                          !g_controls.wheelZoomStyle.enabled);
         g_controls.cameraSpeed.floatValue=1.75f;
         [g_controls cameraSpeedChanged:g_controls.cameraSpeed];
         g_controls.mouseSensitivity.floatValue=.25f;

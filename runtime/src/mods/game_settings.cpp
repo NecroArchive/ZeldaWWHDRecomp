@@ -951,6 +951,16 @@ void register_builtin() {
         add(std::move(it));
     }
     {
+        Item it;  // issue #696 (mods/mouse_wheel.h Style): only with Mouse wheel: Zoom
+        it.id = "camera.wheel-zoom", it.tab = "camera", it.label = "Wheel zoom", it.kind = Kind::Choice;
+        it.help = "Distance only: closer or further, same height and angle. Original: the game's zoom, lower as it comes closer.";
+        it.choices = {"Original", "Distance only"};
+        it.get = [] { return (float)mods::wheel_zoom_style(); };
+        it.set = [](float v) { mods::set_wheel_zoom_style((int)std::lround(v)); };
+        it.enabled = [] { return mods::mouse_wheel_mode() == 1; };
+        add(std::move(it));
+    }
+    {
         Item it;  // issue #696 (mods/mouse_wheel.h kSmoothSeconds): only with Mouse wheel: Zoom
         it.id = "camera.wheel-smoothing", it.tab = "camera", it.label = "Wheel zoom smoothing", it.kind = Kind::Choice;
         it.help = "How long the camera takes to catch up with the wheel's zoom. Off: at once.";

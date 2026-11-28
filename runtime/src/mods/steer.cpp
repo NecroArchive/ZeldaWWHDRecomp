@@ -16,6 +16,8 @@
 //                                        0 off, 1 L (default), 2 ZL (camera_zoom_hold.h, issue #688)
 //   wheelZoomSmoothing (WWHD_WHEEL_ZOOM_SMOOTH)  Mouse wheel: Zoom's ease: 0 off (instant), 1..4 a catch-up time of
 //                                        0.15 / 0.3 (default) / 0.5 / 1 s (mouse_wheel.h, issue #696)
+//   wheelZoomStyle (WWHD_WHEEL_ZOOM_STYLE)  Mouse wheel: Zoom's style: 0 Original (the game's zoom), 1 Distance only
+//                                        (default; the distance alone; mouse_wheel.h, issue #696)
 //   aimLeftStick (WWHD_AIM_LEFT_STICK)   first-person aiming: 0 right stick as HD (default), 1 left stick as the
 //                                        GameCube (camera.cpp aim_stick_filter, aim_stick.h, issue #666)
 // WWHD_STEER_LOG=1 logs the camera, Link's facing and the kept angle ("[steer] ...").
@@ -81,6 +83,7 @@ Option g_pitch{"WWHD_CAM_STICK_PITCH", "cameraStickPitch", 0, 1};
 Option g_zoom_hold{"WWHD_CAM_ZOOM_HOLD", "cameraZoomHold", camera_zoom_hold::kDefault, camera_zoom_hold::kChoiceCount - 1};
 Option g_aim_left{"WWHD_AIM_LEFT_STICK", "aimLeftStick", 0, 1};
 Option g_wheel_smooth{"WWHD_WHEEL_ZOOM_SMOOTH", "wheelZoomSmoothing", mouse_wheel::kSmoothDefault, mouse_wheel::kSmoothCount - 1};
+Option g_wheel_style{"WWHD_WHEEL_ZOOM_STYLE", "wheelZoomStyle", mouse_wheel::kStyleDefault, mouse_wheel::kStyleCount - 1};
 
 steer::Options options() {
     steer::Options o;
@@ -156,6 +159,8 @@ void set_camera_zoom_hold(int choice) { g_zoom_hold.set(choice); }
 bool aim_left_stick() { return g_aim_left.get() != 0; }
 int wheel_zoom_smoothing() { return g_wheel_smooth.get(); }
 void set_wheel_zoom_smoothing(int choice) { g_wheel_smooth.set(choice); }
+int wheel_zoom_style() { return g_wheel_style.get(); }
+void set_wheel_zoom_style(int choice) { g_wheel_style.set(choice); }
 void set_aim_left_stick(bool left) { g_aim_left.set(left); }
 // input::read() picks the new choice up on its next read (camera.cpp aim_stick_filter): no stick state is kept
 std::string switch_aim_stick() {

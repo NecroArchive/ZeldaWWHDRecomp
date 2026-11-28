@@ -36,10 +36,12 @@ what is on `devel` and not released yet (also in the
   the default, as the switch was off by default). Zoom uses the game's own zoom, the one of the right stick's up/down,
   so the original limits on how close and how far and its wall checks stay: a notch zooms as far as the stick held
   fully for 4 steps, trackpads zoom smoothly, and it works with either Right stick up/down choice and at every frame
-  rate. **Wheel zoom smoothing** sets how long the camera takes to catch up with the wheel: Off (at once), 0.15 s,
+  rate. **Wheel zoom** chooses what it zooms: *Distance only* (the default) only moves the camera closer or further
+  and keeps its height, angle and field of view, within the game's distance limits; *Original* is the game's own
+  zoom, which also lowers the camera as it comes closer and raises it as it goes further. **Wheel zoom smoothing** sets how long the camera takes to catch up with the wheel: Off (at once), 0.15 s,
   0.3 s (the default), 0.5 s or 1 s. A saved First-person shortcut switch carries over (on: First person, off:
   Bindings). Also on the item menu's settings page, in the macOS Controls window and the Gameplay menu; saved
-  (`WWHD_MOUSE_WHEEL=0/1/2` and `WWHD_WHEEL_ZOOM_SMOOTH=0..4` for a run).
+  (`WWHD_MOUSE_WHEEL=0/1/2`, `WWHD_WHEEL_ZOOM_STYLE=0/1` and `WWHD_WHEEL_ZOOM_SMOOTH=0..4` for a run).
 - **Look up and down: zoom while holding L** (#688, thanks @stonerbong42069). With **Right stick up/down: Look up
   and down**, holding a button switches the right stick back to the original zoom while it is held: **Zoom while
   holding** in **Settings › Controls › Camera**, right under it. *L* (L1 / LB, Q on the keyboard: the Wii U's L
