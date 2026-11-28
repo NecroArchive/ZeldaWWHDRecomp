@@ -866,6 +866,7 @@ void run_appkit_loop() {
         // leave without running static destructors: the GX2 render thread and the game threads may
         // still be using them (exit() here crashed in the renderer's caches, Metal and Vulkan alike)
         fflush(stdout);
+        log_flush();
         fflush(stderr);
         std::_Exit(0);
     }];

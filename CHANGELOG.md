@@ -108,6 +108,17 @@ what is on `devel` and not released yet (also in the
 
 ### Fixed
 
+- **Decomp version: a big stutter every few seconds** (reported on Discord, Windows 11). Every 300 frames (every 5 s at
+  60 fps, 2.5 s at 120 fps, 10 s at 30 fps) the decomp version's native-draw path wrote a block of about 20 long
+  statistics lines (`[native-draw] ... last 300 frames`, `[j3d-desc]`, `[native-pass]`, `[j3d-d1]`,
+  `[j3d-desc-depth]`, `[pkt-persist]`, `[pardecide-s1]`) to the log and the console on the render thread, at the
+  swap, while every other thread that logged waited. On Windows the console write is unbuffered and slow: the
+  report showed frames of up to 136 ms (on a Mac with a slow console in its place, 37 ms instead of 16.7). These lines are now off by default; they come back with **Settings › Graphics ›
+  Detailed performance profiling** or `WWHD_RENDER_STATS=1` (`=0`: never). The Metal renderer's `[gfx] frame ...`
+  block every 300 frames is under the same switch. Also, the log no longer writes on the thread that logs: a
+  line is formatted and queued, and a writer thread writes the log file and the console in order (a crash still
+  writes the last lines to the crash log, and quitting writes everything queued first). `WWHD_LOG_SYNC=1` writes on
+  the calling thread as before.
 - **PC-mode GameCube adapters work on the Mac with their real layout** (#556, thanks @zeldafan2000). macOS describes
   these adapters (Mayflash-style, USB ID 0079 1843/1844/1846, "GameCube Controller Adapter") only as a generic
   controller, and the game read that description: the C-stick ran backwards, the control stick moved Link at a crawl

@@ -125,6 +125,7 @@ static void crash_handler(int sig, siginfo_t* si, void* uctx) {
 #ifdef WWHD_HAS_VULKAN
     if (wwhd_compile_journal_on_crash) wwhd_compile_journal_on_crash();
 #endif
+    log_crash_flush();  // the lines still queued for the log file and stderr (the crash log gets the ring below)
     uintptr_t a = (uintptr_t)si->si_addr;
     uintptr_t base = (uintptr_t)PPC_MEM_BASE;
     char path[96];
@@ -228,6 +229,7 @@ static void win_crash_out(int fd, const char* s, size_t n) { crash_context::reda
 static void win_crash_log_only(int fd, const char* s, size_t n) { crash_context::redact(fd, {s,n}, win_crash_log_raw); }
 static LONG WINAPI crash_handler(EXCEPTION_POINTERS* ex) {
     auto code=ex->ExceptionRecord->ExceptionCode;
+    log_crash_flush();  // the lines still queued for the log file and stderr (the crash log gets the ring below)
     std::error_code ec; std::filesystem::create_directories("captures",ec);
     char path[96]; time_t t=time(nullptr); struct tm tmv; localtime_s(&tmv,&t);
     strftime(path,sizeof path,"captures/crash-%Y%m%d-%H%M%S.log",&tmv);
@@ -836,6 +838,7 @@ int main(int argc, char** argv) {
         const auto chosen = save_folder::startup(config::save_dir, save_paths.preferences, ask_player,
                                                  [](const std::string& line) { LOG("%s", line.c_str()); }, save_policy, seed_namespace);
         if (chosen.quit) {
+            log_flush();
             fflush(stderr);
             _Exit(0);
         }
@@ -911,6 +914,7 @@ int main(int argc, char** argv) {
         }
         printf("{\"ok\": %s, \"message\": \"%s\"}\n", ok ? "true" : "false", quoted.c_str());
         fflush(stdout);
+        log_flush();
         _exit(ok ? 0 : 1);
     }
     if (mods::packages::has_code_mod_support() && mods::required::check_local()) mods::packages::refresh_guest_startup();

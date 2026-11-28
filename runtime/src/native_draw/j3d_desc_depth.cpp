@@ -2,6 +2,7 @@
 // WWHD_NATIVE_DRAW=ON only. The family core (hashes, proven lists, programs, pipelines) is j3d_depth_family.cpp.
 #include "../../third_party/cemu/cemu_shim.h"  // (as the gx2 sources get it: -include)
 #include "native_draw/j3d_desc_depth.h"
+#include "render_prof.h"  // (stats_logs: the periodic statistics lines)
 #include "native_draw/j3d_desc_depth_inst.h"
 #include "Cafe/HW/Latte/Core/FetchShader.h"
 #include "Cafe/HW/Latte/ISA/LatteReg.h"
@@ -974,16 +975,17 @@ void inst_flush(VkCommandBuffer cmd) {
 void frame_end() {
     if (!on() || R.frame < g_countFrame + 300) return;
     g_countFrame = R.frame;
+    const bool log = rprof::stats_logs();  // (the counters are reset either way)
     auto list = [](const std::map<std::string, uint64_t>& m) {
         std::string s;
         for (auto& [k, n] : m) s += ", " + k + " " + std::to_string(n);
         return s.empty() ? std::string(" none") : s;
     };
-    LOG("[j3d-desc-depth] states: %llu hand-written, %llu generated (made so far), reused at %.1f defines/frame; refused%s; "
+    if (log) LOG("[j3d-desc-depth] states: %llu hand-written, %llu generated (made so far), reused at %.1f defines/frame; refused%s; "
         "native depth draws %.1f/frame; failed%s; sets written %.1f/frame, own %.1f/frame", (unsigned long long)g_counts.hand,
         (unsigned long long)g_counts.gen, g_counts.reused / 300.0, list(g_counts.refused).c_str(), g_counts.draws / 300.0, list(g_counts.failed).c_str(), g_counts.setsWritten / 300.0,
         g_counts.setsOwn / 300.0);
-    if (want_layer_output()) {
+    if (log && want_layer_output()) {
         LOG("[j3d-desc-depth] slices: collected %.1f/frame, groups %.1f/frame, instanced draws %.1f/frame (of them with 2+ "
             "slices %.1f), flushes %.1f/frame, not collected %.1f/frame%s", g_counts.collected / 300.0, g_counts.groups / 300.0,
             g_counts.instDraws / 300.0, g_counts.instanced / 300.0, g_counts.flushes / 300.0, g_counts.notCollected / 300.0,

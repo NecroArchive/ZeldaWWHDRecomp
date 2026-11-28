@@ -42,6 +42,11 @@ const char* env_override();   // WWHD_PROFILE when set (it wins over the setting
 bool requested();             // what is in effect from the next swap on: WWHD_PROFILE, else the setting
 void set_requested(bool on);  // the setting changed (any thread); applied at the next swap
 void start(bool saved);       // start-up, before the first frame: the saved setting; logs the state
+// The periodic statistics lines of the renderers and the decomp build's native draws ("[native-draw] ... last 300
+// frames", "[j3d-desc]", "[native-pass]", "[j3d-d1]", "[j3d-desc-depth]", "[pkt-persist]", Metal's "[gfx] frame ...",
+// ...): only while detailed profiling is on, or with WWHD_RENDER_STATS=1 (WWHD_RENDER_STATS=0: never). They were
+// written at the swap every 300 frames, a block of long lines: a stutter every 5 s at 60 fps on Windows.
+bool stats_logs();
 // the performance report's detailed part: the latest report, or one line saying why there is none
 std::string report_section();
 uint64_t now_ns();

@@ -50,6 +50,13 @@ void start(bool saved) {
     g_active = requested();
     LOG("[prof] detailed performance profiling %s (%s)", enabled() ? "on" : "off", source());
 }
+bool stats_logs() {
+    static const int forced = [] {
+        const char* e = getenv("WWHD_RENDER_STATS");
+        return e && *e ? (strcmp(e, "0") != 0 ? 1 : 0) : -1;
+    }();
+    return forced >= 0 ? forced == 1 : enabled();
+}
 static bool log_reports() {
     static const bool on = [] {
         const char* p = getenv("WWHD_PROFILE");

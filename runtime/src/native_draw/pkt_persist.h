@@ -90,7 +90,8 @@ inline Counters& counters() {
 }
 inline void report() {
   auto& C = counters();
-  for (uint32_t s = 0; s < native_draw::kSites; ++s) {
+  const bool log = rprof::stats_logs();  // (the counters are reset either way)
+  for (uint32_t s = 0; log && s < native_draw::kSites; ++s) {
     uint64_t any = 0;
     for (uint32_t c = 0; c < cCounts; ++c) any += C.n[s][c];
     if (!any) continue;
@@ -100,17 +101,17 @@ inline void report() {
       if (C.n[s][c]) k += std::snprintf(buf + k, sizeof buf - k, " %s %.1f,", kCountNames[c], C.n[s][c] / 300.0);
     LOG("%s", buf);
   }
-  {
+  if (log) {
     std::string w;
     for (const auto& [why, n] : C.why) w += " " + why + " " + std::to_string(n) + ";";
     LOG("[pkt-persist] not persisted (300 frames):%s read sets %zu (%.0f words each)", w.c_str(), C.readSets,
         C.readSets ? double(C.readSetWords) / C.readSets : 0.0);
   }
-  if (timing())
+  if (log && timing())
     LOG("[pkt-persist] time per call: take %.2f us (%llu), failed take %.2f us (%llu), lowering %.2f us (%llu)",
         C.nTake ? C.tTake / 1e3 / C.nTake : 0.0, (unsigned long long)C.nTake, C.nMiss ? C.tMiss / 1e3 / C.nMiss : 0.0,
         (unsigned long long)C.nMiss, C.nLower ? C.tLower / 1e3 / C.nLower : 0.0, (unsigned long long)C.nLower);
-  if (timing())
+  if (log && timing())
     LOG("[pkt-persist] time per take: find %.2f us, textures %.2f us; rebuild %.2f us (%llu)", C.nTake ? C.tFind / 1e3 / C.nTake : 0.0,
         C.nTake ? C.tTex / 1e3 / C.nTake : 0.0, C.nRebuild ? C.tRebuild / 1e3 / C.nRebuild : 0.0, (unsigned long long)C.nRebuild);
   C.tRebuild = C.nRebuild = C.tTex = C.tFind = 0;

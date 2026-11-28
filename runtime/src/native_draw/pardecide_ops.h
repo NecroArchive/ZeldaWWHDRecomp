@@ -17,6 +17,8 @@
 #include <cstdio>
 #include <stdexcept>
 
+void log_msg(const char* fmt, ...);  // (runtime.h)
+
 namespace native_draw::pardecide {
 // WWHD_NATIVE_PAR_DECIDE: 0 off; 1 (the default) compact described draws and packet replays, expanded on the emitter
 // (S1). Read once. Phone cliff 2026-11-17 (with SUPPORT2): render thread -0.22 ms, record worker -0.45 ms per frame.
@@ -64,14 +66,16 @@ inline Counters& counters() {
   return c;
 }
 
-// render thread, every 300 frames (j3ddesc d1 frame_end): "[pardecide] per frame" line
-inline void report(double frames) {
+// render thread, every 300 frames (j3ddesc d1 frame_end): the counters taken; LOG: the "[pardecide-s1] per frame" line
+// (rprof::stats_logs())
+inline void report(double frames, bool log) {
   auto take = [](std::atomic<uint64_t>& v) { return double(v.exchange(0, std::memory_order_relaxed)); };
   const double c = take(counters().descCompact), f = take(counters().descFallback), e = take(counters().emitterDesc);
   const double pc = take(counters().packetCompact), pf = take(counters().packetFallback), pe = take(counters().emitterPacket);
-  std::fprintf(stderr, "[pardecide-s1] per frame (level %d): described draws compact %.1f, per-call fallback %.2f, emitter "
-               "expansions %.1f; packet replays compact %.1f, per-call fallback %.2f, emitter expansions %.1f\n", level(),
-               c / frames, f / frames, e / frames, pc / frames, pf / frames, pe / frames);
+  if (log)
+    log_msg("[pardecide-s1] per frame (level %d): described draws compact %.1f, per-call fallback %.2f, emitter "
+            "expansions %.1f; packet replays compact %.1f, per-call fallback %.2f, emitter expansions %.1f", level(),
+            c / frames, f / frames, e / frames, pc / frames, pf / frames, pe / frames);
 }
 // emitter: the replay of one DescDraw (BYTES after the sub-opcode); EXECUTE false only validates
 inline void replay_desc(const std::byte* bytes, size_t size, bool execute) {

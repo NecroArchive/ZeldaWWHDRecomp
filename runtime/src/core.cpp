@@ -22,9 +22,15 @@
 #include <shared_mutex>
 #include <unordered_map>
 #include <vector>
+#ifdef _WIN32
+#include <io.h>
+#else
+#include <unistd.h>
+#endif
 
 #include "recomp_table.h"
 #include "runtime.h"
+#include "log_queue.h"
 #include "rpx_relocs.h"
 #include "guest_module_entry.h"
 #include "mods/guest_mods.h"
@@ -36,45 +42,119 @@ std::string game_dir = "game";
 std::string save_dir = "save";
 }  // namespace config
 
-static std::mutex g_log_mutex;
+static std::mutex g_log_mutex;  // WWHD_LOG_SYNC=1: lines written on the calling thread, under this lock
 
 // the last log lines, kept for crash logs (crash handlers read them without the lock)
 static constexpr int kLogRing = 200, kLogLine = 240;
 static char g_log_ring[kLogRing][kLogLine];
 static std::atomic<uint32_t> g_log_next{0};
-// the log file (main.cpp, captures/wwhd.log): every line in full, under the log lock
+// the log file (main.cpp, captures/wwhd.log): every line in full; called by the writer (under the sink lock)
 static void (*g_log_sink)(const char*, size_t) = nullptr;
+static std::mutex& log_sink_mutex() {
+    static auto* m = new std::mutex;  // never destroyed: the writer thread may still write while the process exits
+    return *m;
+}
+
+static void ring_put(const char* s, size_t n) {
+    char* line = g_log_ring[g_log_next.load() % kLogRing];
+    const size_t k = std::min(n, (size_t)kLogLine - 1);
+    memcpy(line, s, k);
+    line[k] = 0;
+    g_log_next++;
+}
+// one batch of lines (log_queue.h records) to the file sink and stderr, in order; the writer thread, or the caller with
+// WWHD_LOG_SYNC=1. stderr gets the batch in one write (unbuffered on Windows: one console write instead of two a line).
+static void log_write_records(const std::string& rec) {
+#ifdef __ANDROID__
+    std::lock_guard<std::mutex> lk(log_sink_mutex());
+    logq::Queue::each(rec, [](const char* s, size_t n) {
+        if (g_log_sink) g_log_sink(s, n);
+        __android_log_write(ANDROID_LOG_INFO, "wwhd", s);  // adb logcat -s wwhd
+    });
+#else
+    static thread_local std::string out;
+    out.clear();
+    {
+        std::lock_guard<std::mutex> lk(log_sink_mutex());
+        logq::Queue::each(rec, [](const char* s, size_t n) {
+            if (g_log_sink) g_log_sink(s, n);
+            out.append(s, n);
+            out.push_back('\n');
+        });
+    }
+    if (!out.empty()) fwrite(out.data(), 1, out.size(), stderr);
+#endif
+}
+static bool log_sync() {
+    static const bool on = [] {
+        const char* e = getenv("WWHD_LOG_SYNC");
+        return e && *e && strcmp(e, "0") != 0;
+    }();
+    return on;
+}
+static logq::Queue& log_queue() {
+    static auto* q = [] {
+        auto* made = new logq::Queue(log_write_records);  // never destroyed (lines logged at exit)
+        atexit([] { log_flush(); });
+        return made;
+    }();
+    return *q;
+}
+
 void log_set_sink(void (*sink)(const char*, size_t)) {
-    std::lock_guard<std::mutex> lk(g_log_mutex);
+    log_flush();  // the lines queued before go where they went before (main.cpp wrote them from the ring already)
+    std::lock_guard<std::mutex> lk(log_sink_mutex());
     g_log_sink = sink;
 }
 
 void log_msg(const char* fmt, ...) {
-    std::lock_guard<std::mutex> lk(g_log_mutex);
-    va_list ap;
+    char buf[4096];
+    va_list ap, ap2;
     va_start(ap, fmt);
-    char* line = g_log_ring[g_log_next.load() % kLogRing];
-    va_list ap2;
     va_copy(ap2, ap);
-    vsnprintf(line, kLogLine, fmt, ap2);
-    va_end(ap2);
-    g_log_next++;
-    if (g_log_sink) {
-        char full[4096];
-        va_list ap3;
-        va_copy(ap3, ap);
-        int n = vsnprintf(full, sizeof full, fmt, ap3);
-        va_end(ap3);
-        if (n > 0) g_log_sink(full, std::min((size_t)n, sizeof full - 1));
+    const int n = vsnprintf(buf, sizeof buf, fmt, ap);
+    va_end(ap);
+    const char* full = buf;
+    std::string big;  // (a longer line: in full, as stderr got it before)
+    if (n >= (int)sizeof buf) {
+        big.resize((size_t)n);
+        vsnprintf(big.data(), (size_t)n + 1, fmt, ap2);
+        full = big.data();
     }
+    va_end(ap2);
+    const size_t len = n > 0 ? (size_t)n : 0;
+    if (log_sync()) {
+        std::lock_guard<std::mutex> lk(g_log_mutex);
+        ring_put(full, len);
+        std::string rec;
+        logq::Queue::append(rec, full, len);
+        log_write_records(rec);
+        return;
+    }
+    log_queue().push(full, len, [&] { ring_put(full, len); });
+}
+
+bool log_flush() {
+    if (log_sync()) return true;
+    return log_queue().flush();
+}
+
+void log_crash_flush() {
+    if (log_sync()) return;
+    std::string rec;
+    if (!log_queue().try_take(rec) || rec.empty()) return;
+    std::unique_lock<std::mutex> lk(log_sink_mutex(), std::try_to_lock);
+    logq::Queue::each(rec, [&](const char* s, size_t n) {
+        if (lk.owns_lock() && g_log_sink) g_log_sink(s, n);
 #ifdef __ANDROID__
-    __android_log_vprint(ANDROID_LOG_INFO, "wwhd", fmt, ap);  // adb logcat -s wwhd
-    va_end(ap);
+        __android_log_write(ANDROID_LOG_INFO, "wwhd", s);
+#elif defined(_WIN32)
+        _write(2, s, (unsigned)n);
+        _write(2, "\n", 1);
 #else
-    vfprintf(stderr, fmt, ap);
-    va_end(ap);
-    fputc('\n', stderr);
+        if (write(2, s, n) < 0 || write(2, "\n", 1) < 0) {}
 #endif
+    });
 }
 
 void log_ring_write(int fd, void (*out)(int, const char*, size_t)) {
@@ -95,6 +175,7 @@ void fatal(const char* fmt, ...) {
     va_end(ap);
     exception_report::record(message);
     LOG("FATAL: %s", message); // file and crash ring, not just stderr
+    log_flush();
     abort();
 }
 

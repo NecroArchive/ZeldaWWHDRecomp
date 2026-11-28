@@ -96,12 +96,18 @@ sleep 45; sample $! 20 -file sample.txt; kill $!
 `WWHD_PRESS` presses A to get past the title screen, `WWHD_STATE_LOAD_AT=1800:2` loads save-state
 slot 2 at TV frame 1800, and `WWHD_DUMP_FRAMES=2400` writes `frame_2400.png` (in the working
 directory) to check that the run still renders correctly. The "Sort by top of stack" section of
-`sample.txt` shows where the CPU time goes. `run.log` prints the shader and pipeline counts every
-few seconds.
+`sample.txt` shows where the CPU time goes. With `WWHD_RENDER_STATS=1` (or detailed profiling on, below)
+`run.log` prints the shader and pipeline counts every 300 frames.
 
 For a performance bug report, turn on Settings → Graphics → **Detailed performance profiling**, play
 a few seconds, then press **Copy performance report**. The setting is off by default and takes effect
 at once; without it the report leaves out the detailed timings, uploads and draw classes.
+
+The renderers' statistics lines every 300 frames (Metal's `[gfx] frame ...` block; in the decomp version
+`[native-draw] ... last 300 frames`, `[j3d-desc]`, `[native-pass]`, `[j3d-d1]`, `[j3d-desc-depth]`, `[pkt-persist]`
+and `[pardecide-s1]`) are only logged while detailed profiling is on, or with `WWHD_RENDER_STATS=1`
+(`WWHD_RENDER_STATS=0`: never). The counters run either way. Log lines are written by a writer thread (the thread
+that logs only formats and queues the line); `WWHD_LOG_SYNC=1` writes them on the calling thread instead.
 
 Crash logs and the overlay's "Copy performance report" carry one line with the renderer's live
 objects (`runtime/src/render_objects.h`): `renderer objects: 572 shaders, 337 pipelines`, plus on

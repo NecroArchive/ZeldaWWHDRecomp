@@ -68,6 +68,7 @@ bool decide() {
         const bool ok = write_list(probe, hooked);
         LOG("[decomp] code mods: %zu hooked game functions written to %s%s", hooked.size(), probe, ok ? "" : " (failed)");
         fflush(stdout);
+        log_flush();
         fflush(stderr);
         std::_Exit(ok ? 0 : 1);
     }

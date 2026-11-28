@@ -4,6 +4,7 @@
 #include "../../third_party/cemu/cemu_shim.h"  // (as the gx2 sources get it: -include)
 #include "Cafe/HW/Latte/Core/FetchShader.h"
 #include "gx2/native_pass.h"
+#include "render_prof.h"  // (stats_logs: the periodic statistics lines)
 #include "gx2/native_draw.h"
 #include "gx2/gx2.h"
 #include "gx2/gx2_cmd.h"
@@ -309,11 +310,13 @@ void frame_end() {
                                                  "draws before any described viewport", "draws whose viewport or scissor differ",
                                                  "trusted target draws", "target draws resolved",
                                                  "trusted targets differing (verify)"};
-    char buf[1000];
-    int k = std::snprintf(buf, sizeof buf, "[native-pass] last 300 frames, per frame:");
-    for (uint32_t c = 0; c < kCounters; ++c)
-        k += std::snprintf(buf + k, sizeof buf - k, "%s %s %.1f", c ? "," : "", names[c], g_count[c] / 300.0);
-    LOG("%s", buf);
+    if (rprof::stats_logs()) {
+        char buf[1000];
+        int k = std::snprintf(buf, sizeof buf, "[native-pass] last 300 frames, per frame:");
+        for (uint32_t c = 0; c < kCounters; ++c)
+            k += std::snprintf(buf + k, sizeof buf - k, "%s %s %.1f", c ? "," : "", names[c], g_count[c] / 300.0);
+        LOG("%s", buf);
+    }
     std::memset(g_count, 0, sizeof g_count);
 }
 

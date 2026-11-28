@@ -10,6 +10,7 @@
 #include "gx2/gx2_cmd.h"
 #include "gx2/gx2_regs.h"
 #include "runtime.h"
+#include "render_prof.h"  // (stats_logs: the periodic statistics lines)
 #include "framegen.h"
 #include "cloud_proto.h"
 #include "aspect.h"
@@ -483,7 +484,7 @@ void draw(uint32_t* regs, Apply apply, const uint32_t* p, uint32_t n) {
 void frame_end() {
     ++g_frames;
 #if defined(WWHD_DECOMP_FAST)
-    if (::native_draw::pardecide::level() && g_frames % 300 == 0) ::native_draw::pardecide::report(300.0);
+    if (::native_draw::pardecide::level() && g_frames % 300 == 0) ::native_draw::pardecide::report(300.0, rprof::stats_logs());
 #endif
     if (timing_on() && g_frames % 300 == 0) {  // (any mode) the render thread's CPU time per frame, last 300 frames
         static uint64_t last = 0;
@@ -495,18 +496,20 @@ void frame_end() {
     }
     if (g_frames % 300 || !g_counts[cDraws]) return;
     char buf[8192];
-    int j = std::snprintf(buf, sizeof buf, "[j3d-d1] per frame:");
-    for (uint32_t c = 0; c < cCounts && j < int(sizeof buf) - 64; ++c)
-        if (g_counts[c])
-            j += std::snprintf(buf + j, sizeof buf - j, " %s %.2f;", kCountNames[c],
-                               g_counts[c] / 300.0 / (c == tDrawNs || c == tSettleNs || c == tInvalidateNs || (c >= pChecks && c <= tVkNs) || c == tFallbackFullNs || c == tFallbackMakeNs ? 1000.0 : 1.0));
-    LOG("%s", buf);
+    if (rprof::stats_logs()) {  // (the counters are reset either way)
+        int j = std::snprintf(buf, sizeof buf, "[j3d-d1] per frame:");
+        for (uint32_t c = 0; c < cCounts && j < int(sizeof buf) - 64; ++c)
+            if (g_counts[c])
+                j += std::snprintf(buf + j, sizeof buf - j, " %s %.2f;", kCountNames[c],
+                                   g_counts[c] / 300.0 / (c == tDrawNs || c == tSettleNs || c == tInvalidateNs || (c >= pChecks && c <= tVkNs) || c == tFallbackFullNs || c == tFallbackMakeNs ? 1000.0 : 1.0));
+        LOG("%s", buf);
+    }
     std::fill(std::begin(g_counts), std::end(g_counts), 0);
     if (debug_on() && !g_why.empty()) {
         std::vector<std::pair<uint64_t, std::string>> v;
         for (auto& [k, c] : g_why) v.push_back({c, k});
         std::sort(v.rbegin(), v.rend());
-        j = std::snprintf(buf, sizeof buf, "[j3d-d1] fallback reasons per frame:");
+        int j = std::snprintf(buf, sizeof buf, "[j3d-d1] fallback reasons per frame:");
         for (size_t i = 0; i < v.size() && i < 48 && j < int(sizeof buf) - 200; ++i)
             j += std::snprintf(buf + j, sizeof buf - j, " %s %.2f;", v[i].second.c_str(), v[i].first / 300.0);
         LOG("%s", buf);

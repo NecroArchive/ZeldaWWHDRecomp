@@ -27,6 +27,7 @@ void log_msg(const char* fmt, ...) {
     va_end(ap);
     g_log.push_back(line);
 }
+bool log_flush() { return true; }
 void fatal(const char* fmt, ...) {
     va_list ap;
     va_start(ap, fmt);

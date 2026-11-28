@@ -2367,31 +2367,31 @@ static uint64_t g_skip[SK_COUNT];
 static const char* kSkipNames[SK_COUNT] = {"geometry-shader", "raster-kill", "no-fetch-shader", "shader-failed", "no-target",
                                            "unsupported-prim", "no-pass", "pipeline-failed", "cull-all", "empty-scissor",
                                            "compiling", "dropped-depth", "dropped-color", "pipeline-compiling"};
-void report_skips() {
+void report_skips(bool log) {  // (log: rprof::stats_logs(); the counters are reset either way)
     char buf[512];
     int n = 0;
     for (int i = 0; i < SK_COUNT; i++)
         if (g_skip[i]) n += snprintf(buf + n, sizeof buf - n, " %s=%llu", kSkipNames[i], (unsigned long long)g_skip[i]);
-    if (n) LOG("[gfx] skipped draws:%s", buf);
-    LOG("[gfx] %zu shaders (%zu wide keys known), %zu pipelines; ms decompile %.0f, msl %.0f, pipeline %.0f", g_translations,
+    if (log && n) LOG("[gfx] skipped draws:%s", buf);
+    if (log) LOG("[gfx] %zu shaders (%zu wide keys known), %zu pipelines; ms decompile %.0f, msl %.0f, pipeline %.0f", g_translations,
         g_shaders.size(), g_pipelines.size(), g_t_decompile, g_t_msl, g_t_pipeline);
-    if (g_key_checks)
+    if (log && g_key_checks)
         LOG("[gfx shader key] %llu wide keys verified, %llu violations", (unsigned long long)g_key_checks,
             (unsigned long long)g_key_violations);
     // since the start: compile waits of draws (the frame's budget, WWHD_COMPILE_WAIT_MS, or without one for
     // targets not redrawn every frame), budgeted waits that ran out, and draws skipped while compiling
-    LOG("[gfx] compile waits: %llu (%.0f ms in all), %llu ran out of the frame's budget; draws skipped while compiling: "
+    if (log) LOG("[gfx] compile waits: %llu (%.0f ms in all), %llu ran out of the frame's budget; draws skipped while compiling: "
         "%llu shader, %llu pipeline", (unsigned long long)g_compile_waits, g_compile_wait_ms,
         (unsigned long long)g_compile_wait_timeouts, (unsigned long long)g_skip[SK_COMPILING],
         (unsigned long long)g_skip[SK_PIPE_COMPILING]);
-    if (g_must_run_waits)
+    if (log && g_must_run_waits)
         LOG("[gfx] draws that waited for their compile (targets not redrawn every frame): %llu, %.0f ms in all",
             (unsigned long long)g_must_run_waits, g_must_run_wait_ms);
     extern uint64_t g_stat_full_checks, g_stat_uploads, g_stat_invalidates, g_stat_invalidated_surfaces;
     extern uint64_t g_stat_hashed_bytes;
     uint64_t faults, protectedPages;
     wwatch::take_stats(faults, protectedPages);
-    LOG("[gfx] last 300 frames: %llu full texture checks (%.1f MiB hashed), %llu uploads, %llu invalidates marking %llu surfaces, "
+    if (log) LOG("[gfx] last 300 frames: %llu full texture checks (%.1f MiB hashed), %llu uploads, %llu invalidates marking %llu surfaces, "
         "%llu texture page write faults, %llu pages protected; staging: %llu levels from the upload pool (%.1f MiB), "
         "%llu own buffers (%.1f MiB)",
         (unsigned long long)g_stat_full_checks, g_stat_hashed_bytes / 1048576.0, (unsigned long long)g_stat_uploads,
@@ -2403,7 +2403,7 @@ void report_skips() {
     for (int k = 0; k < kRangeKinds; k++) {
         size_t dynamicRanges = 0;
         for (auto& [key, r] : g_guest_ranges[k]) dynamicRanges += r.dynamic;
-        LOG("[gfx] last 300 frames: %llu rewritten %s copies (%.1f MiB); %zu of %zu ranges rewritten by the CPU",
+        if (log) LOG("[gfx] last 300 frames: %llu rewritten %s copies (%.1f MiB); %zu of %zu ranges rewritten by the CPU",
             (unsigned long long)g_range_copies[k], k == kRangeVertex ? "vertex buffer" : "uniform block",
             g_range_copy_bytes[k] / 1048576.0, dynamicRanges, g_guest_ranges[k].size());
         g_range_copies[k] = g_range_copy_bytes[k] = 0;

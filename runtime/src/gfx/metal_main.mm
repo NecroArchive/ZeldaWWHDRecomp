@@ -1,5 +1,6 @@
 #include "background_shaders.h"
 #include "perf_metrics.h"
+#include "render_prof.h"
 #include "gfx/capture_schedule.h"
 #include "savestate.h"
 #include "interp.h"
@@ -603,11 +604,14 @@ void swap() {
         clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts);
         static uint64_t lastCpu = 0;
         uint64_t cpu = (uint64_t)ts.tv_sec * 1000000000ull + (uint64_t)ts.tv_nsec;
-        LOG("[gfx] frame %llu, %llu draws so far, GPU %.1f ms/frame, render thread CPU %.2f ms/frame", (unsigned long long)R.frame,
-            (unsigned long long)R.drawCount, g_gpu_ns.exchange(0) / 1e6 / 300.0, lastCpu ? (cpu - lastCpu) / 1e6 / 300.0 : 0.0);
+        const bool log = rprof::stats_logs();  // (the counters are reset either way)
+        const uint64_t gpuNs = g_gpu_ns.exchange(0);
+        if (log)
+            LOG("[gfx] frame %llu, %llu draws so far, GPU %.1f ms/frame, render thread CPU %.2f ms/frame", (unsigned long long)R.frame,
+                (unsigned long long)R.drawCount, gpuNs / 1e6 / 300.0, lastCpu ? (cpu - lastCpu) / 1e6 / 300.0 : 0.0);
         lastCpu = cpu;
-        void report_skips();
-        report_skips();
+        void report_skips(bool log);
+        report_skips(log);
     }
 }
 

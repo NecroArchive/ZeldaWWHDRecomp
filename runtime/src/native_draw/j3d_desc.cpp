@@ -4,6 +4,7 @@
 // the site's draw and what that draw resolved), and the inventory counters.
 #include "../../third_party/cemu/cemu_shim.h"  // (as the gx2 sources get it: -include; for gx2_regs.h)
 #include "gx2/native_j3d_desc.h"
+#include "render_prof.h"  // (stats_logs: the periodic statistics lines)
 #include "gx2/native_j3d_desc_draw.h"
 #include "native_draw/j3d_desc_lists.h"
 #include "gx2/native_draw.h"
@@ -1510,6 +1511,7 @@ void frame_end() {
     static uint64_t frames = 0;
     if (++frames % 300) return;
     if (!mode()) return;
+    const bool log = rprof::stats_logs();  // (counters and histograms are reset either way)
     char buf[3000];
     int k = std::snprintf(buf, sizeof buf, "[j3d-desc] last 300 frames, per frame:");
     for (uint32_t c = 0; c < cCounts; ++c) {
@@ -1528,7 +1530,7 @@ void frame_end() {
     if (siteTimed && k < int(sizeof buf) - 200)
         k += std::snprintf(buf + k, sizeof buf - k, " the site's own calls (hook to draw) %.0f ns/draw %.3f ms/frame,",
                            double(siteNs) / siteTimed, siteNs / 300.0 / 1e6);
-    LOG("%s descs seen %zu, envs seen %zu", buf, g_descEffects.size(), g_envEffects.size());
+    if (log) LOG("%s descs seen %zu, envs seen %zu", buf, g_descEffects.size(), g_envEffects.size());
     if (sitecap_on()) {
         std::lock_guard<std::mutex> lk(g_siteMu);
         {
@@ -1563,7 +1565,7 @@ void frame_end() {
                               h == &g_ambientHist ? "ambient" : "ambient refused (differs for the same desc and env)");
         for (size_t i = 0; i < v.size() && i < 40 && j < int(sizeof buf) - 40; ++i)
             j += std::snprintf(buf + j, sizeof buf - j, " %04X %.2f", v[i].second, v[i].first / 300.0);
-        LOG("%s", buf);
+        if (log) LOG("%s", buf);
         h->clear();
     }
 }

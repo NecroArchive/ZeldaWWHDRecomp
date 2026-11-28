@@ -99,7 +99,7 @@ void capture(Cpu* c, uint32_t addr, const std::string& stage, long nth) {
     const bool nomem = getenv("WWHD_GUEST_CAPTURE_NOMEM") != nullptr;
     const bool raw = nomem || getenv("WWHD_GUEST_CAPTURE_RAW") != nullptr;
     FILE* m = nomem ? fopen("/dev/null", "wb") : raw ? fopen((d + "/mem.bin").c_str(), "wb") : popen(("zstd -q -3 -T4 -o '" + d + "/mem.bin.zst'").c_str(), "w");
-    if (!meta || !cpu || !m) { LOG("[capture] cannot write to %s", d.c_str()); _exit(3); }
+    if (!meta || !cpu || !m) { LOG("[capture] cannot write to %s", d.c_str()); log_flush(); _exit(3); }
     char tn[64] = {};
     host::get_thread_name(tn, sizeof tn);
     uint32_t sb = 0, st = 0;
@@ -145,6 +145,7 @@ void capture(Cpu* c, uint32_t addr, const std::string& stage, long nth) {
 #ifdef WWHD_WRITE_WATCH
     wwhd_ww_report(d);
 #endif
+    log_flush();
     fflush(nullptr);
     _exit(0);
 }

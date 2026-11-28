@@ -6258,6 +6258,7 @@ static void quit_game() {
 #ifdef WWHD_PGO_GENERATE_BUILD
   __llvm_profile_write_file();  // instrumented build (CMake WWHD_PGO_GENERATE): _Exit skips the profile's atexit writer
 #endif
+  log_flush();  // _Exit skips the atexit flush: the queued log lines first
   std::_Exit(0);
 }
 static bool close_request(const SDL_Event& event) {

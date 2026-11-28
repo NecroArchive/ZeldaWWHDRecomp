@@ -329,12 +329,14 @@ void init() {
                 gfxvk::drivers::request_install(true);
                 for (;;) SDL_Delay(1000);  // WwhdActivity ends the app once the driver is installed
             }
+            log_flush();
             fflush(stderr);
             _Exit(1);
         }
 #endif
         if (!hidden || !*hidden || !strcmp(hidden, "0"))
             SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Wind Waker HD", text.c_str(), nullptr);
+        log_flush();
         fflush(stderr);
         _Exit(1);
 #else

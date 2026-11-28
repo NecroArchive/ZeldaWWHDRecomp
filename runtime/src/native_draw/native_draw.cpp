@@ -8,6 +8,7 @@
 #include "gx2/gx2_cmd.h"
 #include "gx2/gx2_regs.h"
 #include "runtime.h"
+#include "render_prof.h"  // (stats_logs: the periodic statistics lines)
 #include "framegen.h"
 #include "cloud_proto.h"
 #include "mods/mod_actor_shadow_proof.h"
@@ -702,7 +703,7 @@ static void j3d_report() {
             k += std::snprintf(buf + k, sizeof buf - k, "%s %s %.1f", c ? "," : "", names[c], g_j3d[c] / 300.0);
     if (k < int(sizeof buf) - 32)
         std::snprintf(buf + k, sizeof buf - k, "; hit rate %.1f%%", 100.0 * g_j3d[kJ3dHits] / double(g_j3d[kJ3dDraws]));
-    LOG("%s", buf);
+    if (rprof::stats_logs()) LOG("%s", buf);
     std::memset(g_j3d, 0, sizeof g_j3d);
 }
 
@@ -720,7 +721,8 @@ void frame_end() {
                                                 "in multi-draw batches", "in shader-rewrite batches",
                                                 "kept by the register journal", "register values outside the packet",
                                                 "checked registers changed", "kept by an earlier lowered state"};
-    for (uint32_t site = 0; site < kSites; ++site) {
+    const bool log = rprof::stats_logs();  // (the counters are reset either way)
+    for (uint32_t site = 0; log && site < kSites; ++site) {
         if (!g_instances[site]) continue;
         char buf[700];
         int k = std::snprintf(buf, sizeof buf, "[native-draw] %s %s, last 300 frames: %.1f packet instances/frame",

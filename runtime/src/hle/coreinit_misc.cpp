@@ -342,7 +342,7 @@ HLE(coreinit, ENVGetEnvironmentVariable) { if (arg(c, 1) && arg(c, 2)) st8(arg(c
 HLE(coreinit, __gh_set_errno) {}
 
 HLE(coreinit, exit) { LOG("[game] exit(%d)", (int)arg(c, 0)); std::exit((int)arg(c, 0)); }
-HLE(coreinit, _Exit) { LOG("[game] _Exit(%d)", (int)arg(c, 0)); std::_Exit((int)arg(c, 0)); }
+HLE(coreinit, _Exit) { LOG("[game] _Exit(%d)", (int)arg(c, 0)); log_flush(); std::_Exit((int)arg(c, 0)); }
 
 // ---------------------------------------------------------------- UC (system settings)
 // UCSysConfig entries are 0x54 bytes: name[64], access u32, dataType u32, error s32, dataSize u32, dataPtr u32

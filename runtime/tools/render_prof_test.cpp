@@ -50,9 +50,11 @@ static void frame() {
 
 static void setting() {
     set_env("WWHD_PROFILE", nullptr);
-    // default: off (no saved value)
+    set_env("WWHD_RENDER_STATS", nullptr);
+    // default: off (no saved value); the periodic statistics lines too
     rprof::start(false);
     assert(!rprof::enabled() && !rprof::requested() && !rprof::env_override());
+    assert(!rprof::stats_logs());
     assert(logged("[prof] detailed performance profiling off (setting)"));
     for (int i = 0; i < 200; i++) frame();
     assert(rprof::latest_report().empty());
@@ -68,6 +70,7 @@ static void setting() {
     assert(has(rprof::report_section(), "Detailed profiling is on"));
     frame();
     assert(rprof::enabled() && logged("[prof] detailed performance profiling on (setting)"));
+    assert(rprof::stats_logs());  // the statistics lines follow the setting
     for (int i = 0; i < 130; i++) frame();
     const std::string report = rprof::latest_report();
     assert(has(report, "[prof] frame") && has(report, "[prof] ops ms/frame") && has(report, "[prof] draw classes"));
@@ -78,6 +81,7 @@ static void setting() {
     rprof::set_requested(false);
     frame();
     assert(!rprof::enabled() && logged("[prof] detailed performance profiling off (setting)"));
+    assert(!rprof::stats_logs());
     assert(rprof::latest_report().empty() && has(rprof::report_section(), "are off"));
 
     // the saved choice at start-up
@@ -98,9 +102,22 @@ static void env(bool on) {
     else assert(has(rprof::report_section(), "WWHD_PROFILE=0"));
 }
 
+// WWHD_RENDER_STATS=1: the statistics lines with profiling off; =0: never, also with profiling on
+static void stats(bool on) {
+    set_env("WWHD_PROFILE", nullptr);
+    set_env("WWHD_RENDER_STATS", on ? "1" : "0");
+    rprof::start(!on);
+    assert(rprof::enabled() == !on && rprof::stats_logs() == on);
+    rprof::set_requested(on);
+    frame();
+    assert(rprof::enabled() == on && rprof::stats_logs() == on);
+}
+
 int main(int argc, char** argv) {
     const char* mode = argc > 1 ? argv[1] : "";
-    if (!strcmp(mode, "env-on")) env(true);
+    if (!strcmp(mode, "stats-on")) stats(true);
+    else if (!strcmp(mode, "stats-off")) stats(false);
+    else if (!strcmp(mode, "env-on")) env(true);
     else if (!strcmp(mode, "env-off")) env(false);
     else setting();
     puts("render_prof: ok");

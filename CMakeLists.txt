@@ -1704,6 +1704,14 @@ target_compile_options(render_prof_test PRIVATE -UNDEBUG)
 add_test(NAME render_prof COMMAND render_prof_test)
 add_test(NAME render_prof_env_on COMMAND render_prof_test env-on)
 add_test(NAME render_prof_env_off COMMAND render_prof_test env-off)
+add_test(NAME render_prof_stats_on COMMAND render_prof_test stats-on)
+add_test(NAME render_prof_stats_off COMMAND render_prof_test stats-off)
+# the log's writer queue (log_queue.h): order, a slow writer, flush, back-pressure, the crash handler's take
+add_executable(log_queue_test runtime/tools/log_queue_test.cpp)
+target_include_directories(log_queue_test PRIVATE runtime/src)
+target_link_libraries(log_queue_test PRIVATE Threads::Threads)
+target_compile_options(log_queue_test PRIVATE -UNDEBUG)
+add_test(NAME log_queue COMMAND log_queue_test)
 # Settings > Graphics > Shader compile (off / fast): which draws may be left out, default, switch,
 # WWHD_BG_SHADERS, the wait budget and the report line
 # hand-drawn mip level detection and the texture budget's choice (gfx/artistic_mips.h, gfx/vulkan/texture_budget.h)

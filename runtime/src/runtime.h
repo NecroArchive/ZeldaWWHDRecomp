@@ -181,6 +181,12 @@ void log_msg(const char* fmt, ...) __attribute__((format(printf, 1, 2)));
 #define LOG(...) log_msg(__VA_ARGS__)
 // every later log line also goes to `sink` (one line without '\n'); nullptr stops (main.cpp: log file)
 void log_set_sink(void (*sink)(const char*, size_t));
+// log_msg queues the line (crash ring at once); a writer thread writes the file sink and stderr (log_queue.h).
+// WWHD_LOG_SYNC=1: written on the calling thread, as before. log_flush(): waits (up to 3 s) until every line logged
+// before is written (before _exit / _Exit; exit() runs it through atexit). log_crash_flush(): crash handlers, the
+// lines still queued, written without waiting on a lock (skipped when the queue or the sink is busy).
+bool log_flush();
+void log_crash_flush();
 void log_ring_write(int fd, void (*out)(int, const char*, size_t));  // the recent lines, oldest first
 // writes the last ~200 log lines through out(fd, text, len) (used by crash logs; no locking)
 void log_ring_write(int fd, void (*out)(int, const char*, size_t));
